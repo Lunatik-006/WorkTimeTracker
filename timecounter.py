@@ -1,63 +1,103 @@
-from datetime import datetime, timedelta
+"""Simple CLI tool for counting working time blocks in a log file.
+
+The script sums time intervals between the first and last timestamp of each
+block after the most recent "ОПЛАЧЕНО" status.  It also calculates the amount of
+time already invoiced but not yet paid - the interval from the last
+"ОПЛАЧЕНО" (or start of file) up to the following "СЧЕТ ВЫСТАВЛЕН" entry.
+"""
+
+from __future__ import annotations
+
+import argparse
+from datetime import datetime
 import re
+from typing import List, Tuple, Optional
 
-filename_ds="DeepAssistTime"
-filename_flows="FLOWS time"
-# Читаем новый файл
-with open(f"C:\\Users\\fded3\\Desktop\\{filename_flows}.txt", encoding='utf-8') as f:
-    lines = [line.strip() for line in f.readlines()]
 
-# Найдём индекс строки с "ОПЛАЧЕНО"
-last_paid_index = max(i for i, line in enumerate(lines) if 'ОПЛАЧЕНО' in line)
+PAID = "ОПЛАЧЕНО"
+INVOICED = "СЧЕТ ВЫСТАВЛЕН"
 
-# Обрезаем строки после "ОПЛАЧЕНО"
-post_paid_lines = lines[last_paid_index + 1:]
+DATE_PATTERN = re.compile(r"\d{4}\.\d{2}\.\d{2}")
+TIME_PATTERN = re.compile(r"\d{1,2}:\d{2}")
 
-date_pattern = re.compile(r'\d{4}\.\d{2}\.\d{2}')
-time_pattern = re.compile(r'\d{1,2}:\d{2}')
 
-current_date = None
-current_block_times = []
-total_minutes = 0
-block_start_date = None
-block_end_date = None
+def compute_interval(lines: List[str]) -> Tuple[float, Optional[str], Optional[str]]:
+    """Return total minutes and the first/last date for the given log lines."""
 
-i = 0
-while i < len(post_paid_lines):
-    line = post_paid_lines[i]
+    total_minutes = 0.0
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+    current_date: Optional[str] = None
 
-    # Обнаружена дата
-    if date_pattern.match(line):
-        current_date = line
-        if block_start_date is None:
-            block_start_date = current_date
-        block_end_date = current_date
-        i += 1
-        continue
+    i = 0
+    while i < len(lines):
+        line = lines[i]
 
-    # Начало блока временных меток
-    if time_pattern.match(line):
-        block_times = []
-        # Пока не пустая строка и не дата — собираем метки
-        while i < len(post_paid_lines) and post_paid_lines[i] and not date_pattern.match(post_paid_lines[i]):
-            times = time_pattern.findall(post_paid_lines[i])
-            block_times.extend(times)
+        if DATE_PATTERN.match(line):
+            current_date = line
+            if start_date is None:
+                start_date = current_date
+            end_date = current_date
             i += 1
+            continue
 
-        # Если есть хотя бы 2 метки — считаем интервал
-        if len(block_times) >= 2:
-            t1 = datetime.strptime(block_times[0], '%H:%M')
-            t2 = datetime.strptime(block_times[-1], '%H:%M')
-            delta = (t2 - t1).total_seconds() / 60
-            # Если время пошло "через полночь", корректируем
-            if delta < 0:
-                delta += 24 * 60
-            total_minutes += delta
-    else:
+        if TIME_PATTERN.match(line):
+            block_times: List[str] = []
+            while i < len(lines) and lines[i] and not DATE_PATTERN.match(lines[i]):
+                block_times.extend(TIME_PATTERN.findall(lines[i]))
+                i += 1
+
+            if len(block_times) >= 2:
+                t1 = datetime.strptime(block_times[0], "%H:%M")
+                t2 = datetime.strptime(block_times[-1], "%H:%M")
+                delta = (t2 - t1).total_seconds() / 60
+                if delta < 0:
+                    delta += 24 * 60
+                total_minutes += delta
+            continue
+
         i += 1
 
-# Округление до 0.5 часа
-total_hours = round(total_minutes / 30) / 2
+    return total_minutes, start_date, end_date
 
-result = f"{total_hours} часов (с {block_start_date} по {block_end_date})"
-print(result)
+
+def main(argv: Optional[List[str]] = None) -> None:
+    parser = argparse.ArgumentParser(description="Count working time blocks")
+    parser.add_argument("logfile", help="Path to the log file")
+    args = parser.parse_args(argv)
+
+    with open(args.logfile, encoding="utf-8") as fh:
+        lines = [line.strip() for line in fh.readlines()]
+
+    paid_indexes = [i for i, line in enumerate(lines) if PAID in line]
+    last_paid_index = paid_indexes[-1] if paid_indexes else -1
+
+    post_paid_lines = lines[last_paid_index + 1 :]
+    total_minutes, start_date, end_date = compute_interval(post_paid_lines)
+
+    # Find the first invoice after the last paid marker
+    next_invoice_index = None
+    for idx in range(last_paid_index + 1, len(lines)):
+        if INVOICED in lines[idx]:
+            next_invoice_index = idx
+            break
+
+    invoiced_minutes = None
+    invoiced_end_date = None
+    if next_invoice_index is not None:
+        invoiced_lines = lines[last_paid_index + 1 : next_invoice_index]
+        invoiced_minutes, _, invoiced_end_date = compute_interval(invoiced_lines)
+
+    total_hours = round(total_minutes / 30) / 2
+    print(f"{total_hours} часов (с {start_date} по {end_date})")
+
+    if invoiced_minutes is not None:
+        invoiced_hours = round(invoiced_minutes / 30) / 2
+        print(
+            f"{invoiced_hours} часов до {INVOICED} (с {start_date} по {invoiced_end_date})"
+        )
+
+
+if __name__ == "__main__":
+    main()
+
