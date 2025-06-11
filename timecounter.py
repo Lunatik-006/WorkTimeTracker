@@ -66,8 +66,13 @@ def main(argv: Optional[List[str]] = None) -> None:
     parser.add_argument("logfile", help="Path to the log file")
     args = parser.parse_args(argv)
 
-    with open(args.logfile, encoding="utf-8") as fh:
-        lines = [line.strip() for line in fh.readlines()]
+    with open(args.logfile, encoding="utf-8", newline="") as fh:
+        raw_lines = fh.readlines()
+
+    lines = [line.strip() for line in raw_lines]
+
+    newline = "\r\n" if raw_lines and raw_lines[0].endswith("\r\n") else "\n"
+    log_changed = False
 
     paid_indexes = [i for i, line in enumerate(lines) if PAID in line]
     last_paid_index = paid_indexes[-1] if paid_indexes else -1
@@ -96,6 +101,48 @@ def main(argv: Optional[List[str]] = None) -> None:
         print(
             f"{invoiced_hours} часов до {INVOICED} (с {start_date} по {invoiced_end_date})"
         )
+
+        confirm = input("Mark this invoiced period as paid? [y/N] ").strip().lower()
+        if confirm.startswith("y") and next_invoice_index is not None:
+            raw_lines[next_invoice_index] = raw_lines[next_invoice_index].replace(INVOICED, PAID)
+            print("Marked as paid.")
+            log_changed = True
+
+    # Compute not yet invoiced time (after the last invoice if present)
+    unissued_start = next_invoice_index if next_invoice_index is not None else last_paid_index
+    unissued_lines = lines[unissued_start + 1 :]
+    unissued_minutes, unissued_start_date, unissued_end_date = compute_interval(unissued_lines)
+
+    if unissued_minutes:
+        unissued_hours = round(unissued_minutes / 30) / 2
+        print(
+            f"{unissued_hours} часов без {INVOICED} (с {unissued_start_date} по {unissued_end_date})"
+        )
+        confirm = input("Mark this period as invoiced? [y/N] ").strip().lower()
+        if confirm.startswith("y"):
+            trailing = 0
+            while raw_lines and raw_lines[-1].strip() == "":
+                raw_lines.pop()
+                trailing += 1
+            raw_lines.append(INVOICED + newline)
+            raw_lines.extend([newline] * trailing)
+            print("Marked as invoiced.")
+            log_changed = True
+
+    add = input("Add more log lines? [y/N] ").strip().lower()
+    if add.startswith("y"):
+        print("Enter log lines. Submit an empty line to finish:")
+        while True:
+            entry = input()
+            if entry == "":
+                break
+            raw_lines.append(entry + newline)
+        log_changed = True
+
+    if log_changed:
+        with open(args.logfile, "w", encoding="utf-8", newline="") as fh:
+            fh.writelines(raw_lines)
+        print("Log updated.")
 
 
 if __name__ == "__main__":
