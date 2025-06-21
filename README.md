@@ -1,4 +1,4 @@
-# timecounter
+# pomodortimer
 
 Simple command line utility that sums work time intervals from a log file.
 
