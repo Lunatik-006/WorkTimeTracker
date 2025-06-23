@@ -1,4 +1,4 @@
-from timecounter_gui import main
+from worktime.gui import main
 
 if __name__ == "__main__":
     main()
