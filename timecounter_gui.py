@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import filedialog, messagebox
+from tkinter import filedialog, messagebox, ttk
 from typing import Optional
 
 from timecounter import TimeCounter, DATE_PATTERN, TIME_PATTERN
@@ -17,8 +17,8 @@ class App(tk.Tk):
         file_btn = tk.Button(self, text="Select Log File", command=self.select_file)
         file_btn.pack(pady=5)
 
-        self.interval_list = tk.Listbox(self, width=80)
-        self.interval_list.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+        self.tree = ttk.Treeview(self)
+        self.tree.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
         form = tk.Frame(self)
         form.pack(pady=5)
@@ -50,11 +50,17 @@ class App(tk.Tk):
             self.refresh_list()
 
     def refresh_list(self) -> None:
-        self.interval_list.delete(0, tk.END)
+        for child in self.tree.get_children():
+            self.tree.delete(child)
         if not self.tc:
             return
-        for item in self.tc.intervals_with_statuses():
-            self.interval_list.insert(tk.END, item)
+        for period in self.tc.parse_periods():
+            period_text = f"{period.get('start','')} - {period.get('end','')} {period.get('status','')}".strip()
+            pid = self.tree.insert("", tk.END, text=period_text)
+            for date in period.get("dates", []):
+                did = self.tree.insert(pid, tk.END, text=date["date"])
+                for note in date.get("notes", []):
+                    self.tree.insert(did, tk.END, text=note)
 
     def add_note(self) -> None:
         if not self.tc:
