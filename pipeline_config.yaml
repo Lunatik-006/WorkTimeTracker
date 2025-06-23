@@ -1,0 +1,31 @@
+# pipeline_config.yaml
+# Все лупы будут одинаковой длины и с одинаковыми параметрами.
+common:
+  loop_length:   30        # сек
+  start_trim:    300       # сек (отрезаем «джинглы»)
+  end_trim:      300
+  crossfade:     2000      # мс
+  format:        ogg       # ogg | mp3 | flac | wav
+  bitrate:       192k      # напр. 192k  (null = по умолчанию)
+  volume:        0.6       # громкость при воспроизведении
+
+targets:           # сколько угодно исходных видео
+  - name: pink_noise
+    youtube_url: "https://www.youtube.com/watch?v=8SHf6wmX5MU&t=8896s"
+    raw_file:   "pink_raw.webm"
+    loop_file:  "pink_loop.ogg"
+
+  - name: brown_noise
+    youtube_url: "https://www.youtube.com/watch?v=HPauaZfL6BI&list=PLHT0KXyNdGc6rbFiyTTId5tdDmOsp7MU4&index=8"
+    raw_file:   "brown_raw.webm"
+    loop_file:  "brown_loop.ogg"
+
+  - name: white_noise
+    youtube_url: "https://www.youtube.com/watch?v=CCnCMHNyny8&list=PLHT0KXyNdGc6rbFiyTTId5tdDmOsp7MU4&index=6"
+    raw_file:   "white_raw.webm"
+    loop_file:  "white_loop.ogg"
+
+  - name: grey_noise
+    youtube_url: "https://www.youtube.com/watch?v=HSQ_gW7iVis&list=PLHT0KXyNdGc6rbFiyTTId5tdDmOsp7MU4&index=5"
+    raw_file:   "grey_raw.webm"
+    loop_file:  "grey_loop.ogg"

@@ -1,0 +1,6 @@
+yt-dlp>=2024.1
+pydub>=0.25
+numpy>=1.26
+sounddevice>=0.4
+soundfile>=0.12
+PyYAML>=6.0
