@@ -153,6 +153,38 @@ class TimeCounter:
             result.append(f"{item['date']} {item['start']} - {item['end']} {st}")
         return result
 
+    def parse_periods(self) -> List[dict]:
+        periods: List[dict] = []
+        current_period: dict = {"dates": [], "status": None}
+        current_date: Optional[str] = None
+        notes: List[str] = []
+        for line in self.lines:
+            if DATE_PATTERN.match(line):
+                if current_date is not None:
+                    current_period["dates"].append({"date": current_date, "notes": notes})
+                current_date = line
+                notes = []
+            elif PAID in line or INVOICED in line:
+                if current_date is not None:
+                    current_period["dates"].append({"date": current_date, "notes": notes})
+                    current_date = None
+                    notes = []
+                current_period["status"] = line.strip()
+                if current_period["dates"] or current_period["status"]:
+                    current_period["start"] = current_period["dates"][0]["date"] if current_period["dates"] else ""
+                    current_period["end"] = current_period["dates"][-1]["date"] if current_period["dates"] else ""
+                    periods.append(current_period)
+                current_period = {"dates": [], "status": None}
+            elif line.strip():
+                notes.append(line.strip())
+        if current_date is not None:
+            current_period["dates"].append({"date": current_date, "notes": notes})
+        if current_period["dates"] or current_period.get("status"):
+            current_period["start"] = current_period["dates"][0]["date"] if current_period["dates"] else ""
+            current_period["end"] = current_period["dates"][-1]["date"] if current_period["dates"] else ""
+            periods.append(current_period)
+        return periods
+
     def compute_totals(self) -> str:
         paid_indexes = [i for i, line in enumerate(self.lines) if PAID in line]
         last_paid_index = paid_indexes[-1] if paid_indexes else -1
