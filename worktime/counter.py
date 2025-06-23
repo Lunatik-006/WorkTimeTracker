@@ -130,7 +130,7 @@ class TimeCounter:
     def intervals_with_statuses(self) -> List[str]:
         intervals = self.parse_intervals()
         result = []
-        for item in intervals:
+        for idx, item in enumerate(intervals):
             if "start" not in item:
                 continue
             status_line = item.get("status")
@@ -140,7 +140,9 @@ class TimeCounter:
                 st = "UNPAID"
             result.append(f"{item['date']} {item['start']} - {item['end']} {st}")
             if item.get("rest_after"):
-                result.append("------------")
+                next_item = intervals[idx + 1] if idx + 1 < len(intervals) else None
+                if next_item and next_item.get("date") == item.get("date"):
+                    result.append("------------")
         return result
 
     def parse_periods(self) -> List[dict]:
@@ -149,12 +151,7 @@ class TimeCounter:
         current_date: Optional[str] = None
         notes: List[str] = []
         for line in self.lines:
-            if DATE_PATTERN.match(line):
-                if current_date is not None:
-                    current_period["dates"].append({"date": current_date, "notes": notes})
-                current_date = line
-                notes = []
-            elif PAID in line or INVOICED in line:
+            if PAID in line or INVOICED in line:
                 if current_date is not None:
                     current_period["dates"].append({"date": current_date, "notes": notes})
                     current_date = None
@@ -165,6 +162,11 @@ class TimeCounter:
                     current_period["end"] = current_period["dates"][-1]["date"] if current_period["dates"] else ""
                     periods.append(current_period)
                 current_period = {"dates": [], "status": None}
+            elif DATE_PATTERN.match(line):
+                if current_date is not None:
+                    current_period["dates"].append({"date": current_date, "notes": notes})
+                current_date = line
+                notes = []
             else:
                 notes.append(line)
         if current_date is not None:
