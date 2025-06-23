@@ -39,6 +39,17 @@ class TimerRunner:
 
         self.update_display()
 
+    def _popup(self):
+        """Show the window in the center of the screen above others."""
+        self.window.deiconify()
+        self.window.lift()
+        self.window.attributes('-topmost', True)
+        self.window.update_idletasks()
+        x = (self.window.winfo_screenwidth() - self.window.winfo_width()) // 2
+        y = (self.window.winfo_screenheight() - self.window.winfo_height()) // 2
+        self.window.geometry(f"+{x}+{y}")
+        self.window.after(1000, lambda: self.window.attributes('-topmost', False))
+
     def format_time(self, seconds):
         h, rem = divmod(int(seconds), 3600)
         m, s = divmod(rem, 60)
@@ -89,7 +100,7 @@ class TimerRunner:
             self.window.after_cancel(self.timer_id)
         self.advance()
 
-    def advance(self):
+    def advance(self, auto=False):
         if self.state == "activity":
             if self.current_index < len(self.timer.activities) - 1:
                 self.state = "rest_activity"
@@ -98,10 +109,14 @@ class TimerRunner:
                 self.state = "rest_set"
                 self.remaining = self.timer.rest_set
             self.update_display()
+            if auto and self.window.state() != 'normal':
+                self._popup()
             self.tick()
         elif self.state == "rest_activity":
             self.current_index += 1
             self.start_current_activity()
+            if auto and self.window.state() != 'normal':
+                self._popup()
             if self.running:
                 self.tick()
         else:  # rest_set
@@ -112,6 +127,8 @@ class TimerRunner:
                 return
             self.current_index = 0
             self.start_current_activity()
+            if auto and self.window.state() != 'normal':
+                self._popup()
             if self.running:
                 self.tick()
 
@@ -123,4 +140,4 @@ class TimerRunner:
             self.remaining -= 1
             self.timer_id = self.window.after(1000, self.tick)
         else:
-            self.advance()
+            self.advance(auto=True)

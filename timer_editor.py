@@ -15,31 +15,32 @@ class TimerEditorFrame(ttk.Frame):
         self.timer = None
         self._build_widgets()
         self.grid_columnconfigure(0, weight=1)
+        self.grid_columnconfigure(1, weight=1)
 
     def _build_widgets(self):
-        ttk.Label(self, text="Name").grid(row=0, column=0, sticky="w")
+        ttk.Label(self, text="Name").grid(row=0, column=0, columnspan=2, sticky="w")
         self.entry_name = ttk.Entry(self)
-        self.entry_name.grid(row=1, column=0, sticky="we", pady=(0, 5))
+        self.entry_name.grid(row=1, column=0, columnspan=2, sticky="we", pady=(0, 5))
 
-        ttk.Label(self, text="Description").grid(row=2, column=0, sticky="w")
+        ttk.Label(self, text="Description").grid(row=2, column=0, columnspan=2, sticky="w")
         self.text_desc = tk.Text(self, height=3, width=30)
-        self.text_desc.grid(row=3, column=0, sticky="we", pady=(0, 5))
+        self.text_desc.grid(row=3, column=0, columnspan=2, sticky="we", pady=(0, 5))
 
-        ttk.Label(self, text="Sets").grid(row=4, column=0, sticky="w")
+        ttk.Label(self, text="Sets").grid(row=4, column=0, columnspan=2, sticky="w")
         self.spin_sets = ttk.Spinbox(self, from_=1, to=20, width=5)
-        self.spin_sets.grid(row=5, column=0, sticky="w", pady=(0, 5))
+        self.spin_sets.grid(row=5, column=0, columnspan=2, sticky="w", pady=(0, 5))
 
-        ttk.Label(self, text="Rest between activities").grid(row=6, column=0, sticky="w")
+        ttk.Label(self, text="Rest between activities").grid(row=6, column=0, columnspan=2, sticky="w")
         self.time_rest_act = TimeEntry(self)
-        self.time_rest_act.grid(row=7, column=0, sticky="w", pady=(0, 5))
+        self.time_rest_act.grid(row=7, column=0, columnspan=2, sticky="w", pady=(0, 5))
 
-        ttk.Label(self, text="Rest between sets").grid(row=8, column=0, sticky="w")
+        ttk.Label(self, text="Rest between sets").grid(row=8, column=0, columnspan=2, sticky="w")
         self.time_rest_set = TimeEntry(self)
-        self.time_rest_set.grid(row=9, column=0, sticky="w", pady=(0, 5))
+        self.time_rest_set.grid(row=9, column=0, columnspan=2, sticky="w", pady=(0, 5))
 
-        ttk.Label(self, text="Activities").grid(row=10, column=0, sticky="w")
+        ttk.Label(self, text="Activities").grid(row=10, column=0, columnspan=2, sticky="w")
         self.listbox = tk.Listbox(self, height=8)
-        self.listbox.grid(row=11, column=0, sticky="we")
+        self.listbox.grid(row=11, column=0, columnspan=2, sticky="we")
         self.listbox.bind('<Button-1>', self.set_drag_start)
         self.listbox.bind('<B1-Motion>', self.drag_motion)
         self.drag_index = None
@@ -51,7 +52,7 @@ class TimerEditorFrame(ttk.Frame):
         ttk.Button(act_btns, text="Delete", command=self.delete_activity).grid(row=0, column=2, padx=2)
 
         btn_frame = ttk.Frame(self)
-        btn_frame.grid(row=13, column=0, sticky="e", pady=5)
+        btn_frame.grid(row=12, column=1, sticky="e", pady=5)
         ttk.Button(btn_frame, text="Save", command=self.save).grid(row=0, column=0, padx=2)
         ttk.Button(btn_frame, text="Cancel", command=self.cancel).grid(row=0, column=1, padx=2)
 
