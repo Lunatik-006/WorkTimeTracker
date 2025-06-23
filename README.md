@@ -25,6 +25,12 @@ python main.py
 Timer configurations are stored in the `timers/` directory next to the
 scripts.
 
+For optional spoken notifications install the `pyttsx3` package:
+
+```bash
+pip install pyttsx3
+```
+
 ## Usage
 
 1. Press **New** to create a timer or select one from the list to edit.

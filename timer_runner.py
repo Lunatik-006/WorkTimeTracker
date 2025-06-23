@@ -1,6 +1,8 @@
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import messagebox, ttk
+
 from models import TimerConfig
+from tts import speak
 
 
 class TimerRunner:
@@ -43,12 +45,12 @@ class TimerRunner:
         """Show the window in the center of the screen above others."""
         self.window.deiconify()
         self.window.lift()
-        self.window.attributes('-topmost', True)
+        self.window.attributes("-topmost", True)
         self.window.update_idletasks()
         x = (self.window.winfo_screenwidth() - self.window.winfo_width()) // 2
         y = (self.window.winfo_screenheight() - self.window.winfo_height()) // 2
         self.window.geometry(f"+{x}+{y}")
-        self.window.after(1000, lambda: self.window.attributes('-topmost', False))
+        self.window.after(1000, lambda: self.window.attributes("-topmost", False))
 
     def format_time(self, seconds):
         h, rem = divmod(int(seconds), 3600)
@@ -58,7 +60,9 @@ class TimerRunner:
     def update_display(self):
         if self.state == "activity" and self.current_index < len(self.timer.activities):
             act = self.timer.activities[self.current_index]
-            self.label_activity.config(text=f"Set {self.current_set}/{self.timer.sets}: {act.name}")
+            self.label_activity.config(
+                text=f"Set {self.current_set}/{self.timer.sets}: {act.name}"
+            )
         elif self.state == "rest_activity":
             self.label_activity.config(text="Rest")
         else:
@@ -71,6 +75,7 @@ class TimerRunner:
             self.paused = False
             if self.remaining == 0:
                 self.start_current_activity()
+            speak("таймер запущен")
             self.tick()
 
     def start_current_activity(self):
@@ -78,6 +83,7 @@ class TimerRunner:
         act = self.timer.activities[self.current_index]
         self.remaining = act.duration
         self.update_display()
+        speak(act.name)
 
     def pause(self):
         if self.running:
@@ -94,6 +100,7 @@ class TimerRunner:
         self.remaining = 0
         self.state = "activity"
         self.update_display()
+        speak("таймер остановлен")
 
     def next_activity(self):
         if self.running and self.timer_id:
@@ -108,14 +115,15 @@ class TimerRunner:
             else:
                 self.state = "rest_set"
                 self.remaining = self.timer.rest_set
+            speak("отдых")
             self.update_display()
-            if auto and self.window.state() != 'normal':
+            if auto and self.window.state() != "normal":
                 self._popup()
             self.tick()
         elif self.state == "rest_activity":
             self.current_index += 1
             self.start_current_activity()
-            if auto and self.window.state() != 'normal':
+            if auto and self.window.state() != "normal":
                 self._popup()
             if self.running:
                 self.tick()
@@ -127,7 +135,7 @@ class TimerRunner:
                 return
             self.current_index = 0
             self.start_current_activity()
-            if auto and self.window.state() != 'normal':
+            if auto and self.window.state() != "normal":
                 self._popup()
             if self.running:
                 self.tick()
