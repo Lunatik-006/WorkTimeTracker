@@ -16,20 +16,21 @@ interface.
 ## Installation
 
 This project requires Python 3 with Tkinter installed. Clone the
-repository and run the application using:
+repository, install the dependencies and run the application using:
+
+```bash
+pip install -r requirements.txt
+```
+
+After installing the requirements start the program with:
 
 ```bash
 python main.py
 ```
 
 Timer configurations are stored in the `timers/` directory next to the
-scripts.
-
-For optional spoken notifications install the `pyttsx3` package:
-
-```bash
-pip install pyttsx3
-```
+scripts. For optional spoken notifications the `requirements.txt`
+includes the `pyttsx3` package.
 
 ## Usage
 
