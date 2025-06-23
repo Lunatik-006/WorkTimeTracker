@@ -1,18 +1,20 @@
 #!/usr/bin/env python3
 """
-make_loopable.py  —  готовит аудиофайл к бесшовному повтору.
+Utilities for working with short noise loops.
 
-❱❱  python make_loopable.py input.mp3 \
-        --output pink_noise_loop.ogg \
-        --start-trim 120   --end-trim 120 \
-        --crossfade 2000   --format ogg
+The module provides:
+  * ``make_loopable`` – trim a long noise recording and apply a cross-fade so it can be looped.
+  * ``play_loop`` – play an audio file in an endless loop.
 """
 
 import argparse
 from pathlib import Path
 
-from pydub import AudioSegment   # pip install pydub
-# pydub использует FFmpeg. Убедись, что ffmpeg в PATH.
+import sounddevice as sd
+import soundfile as sf
+from pydub import AudioSegment
+
+# pydub uses FFmpeg. Make sure ``ffmpeg`` is available in PATH.
 
 def make_loopable(
     src: Path,
@@ -23,12 +25,9 @@ def make_loopable(
     out_format: str = "ogg",
     bitrate: str | None = None,
 ) -> None:
-    """Обрезает шум и кросс-фейдит конец с началом."""
+    """Trim noise and cross-fade the end with the beginning."""
     audio = AudioSegment.from_file(src)
-
     trimmed = audio[start_trim * 1000 : len(audio) - end_trim * 1000]
-
-    # Делаем «копия + crossfade» и оставляем только первую половину
     loopable = trimmed.append(trimmed, crossfade=crossfade_ms)[: len(trimmed)]
 
     export_kwargs = {}
@@ -37,6 +36,19 @@ def make_loopable(
 
     loopable.export(dst, format=out_format, **export_kwargs)
     print(f"✅  Exported loopable file → {dst}  ({out_format})")
+
+
+def play_loop(path: str | Path, volume: float = 1.0) -> None:
+    """Play the given audio file in an infinite loop."""
+    data, samplerate = sf.read(str(path), dtype="float32")
+    data = data * volume
+    try:
+        while True:
+            sd.play(data, samplerate)
+            sd.wait()
+    except KeyboardInterrupt:
+        sd.stop()
+        print("\n⏹  Playback stopped.")
 
 
 if __name__ == "__main__":
@@ -53,8 +65,8 @@ if __name__ == "__main__":
                         help="Формат вывода (default: ogg)")
     parser.add_argument("--bitrate", default=None,
                         help="Битрейт для сжатых форматов, напр. '192k'")
-
     args = parser.parse_args()
+
     output_path = args.output or args.input.with_stem(args.input.stem + "_loop").with_suffix("." + args.format)
 
     make_loopable(
