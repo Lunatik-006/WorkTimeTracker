@@ -9,7 +9,7 @@ class MainApp(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("Pomodoro Timer")
-        self.geometry("700x400")
+        self.geometry("700x550")
         self.manager = TimerManager()
         self.editor = TimerEditorFrame(self, self.manager, self.on_editor_closed)
         self.create_widgets()
