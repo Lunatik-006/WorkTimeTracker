@@ -1,9 +1,9 @@
 import tkinter as tk
-from tkinter import filedialog, messagebox, ttk
+from tkinter import filedialog, messagebox, ttk, simpledialog
 from typing import Optional
 
 from .counter import TimeCounter
-from .constants import DATE_PATTERN, TIME_PATTERN
+from .constants import DATE_PATTERN, TIME_PATTERN, DEFAULT_LOG_DIR
 
 
 class App(tk.Tk):
@@ -15,8 +15,10 @@ class App(tk.Tk):
         self.geometry("600x500")
         self.tc: Optional[TimeCounter] = None
 
-        file_btn = tk.Button(self, text="Select Log File", command=self.select_file)
-        file_btn.pack(pady=5)
+        file_frame = tk.Frame(self)
+        file_frame.pack(pady=5)
+        tk.Button(file_frame, text="Select Log File", command=self.select_file).pack(side=tk.LEFT, padx=5)
+        tk.Button(file_frame, text="Create New Log", command=self.create_new_log).pack(side=tk.LEFT, padx=5)
 
         self.tree = ttk.Treeview(self)
         self.tree.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
@@ -41,12 +43,19 @@ class App(tk.Tk):
         btn_frame = tk.Frame(self)
         btn_frame.pack(pady=5)
         tk.Button(btn_frame, text="Add Note", command=self.add_note).grid(row=0, column=0, padx=5)
-        tk.Button(btn_frame, text="Calculate Totals", command=self.show_totals).grid(row=0, column=1, padx=5)
+        tk.Button(btn_frame, text="Add Invoice", command=self.add_invoice).grid(row=0, column=1, padx=5)
         tk.Button(btn_frame, text="Mark Invoice as Paid", command=self.mark_paid).grid(row=0, column=2, padx=5)
 
     def select_file(self) -> None:
-        path = filedialog.askopenfilename(title="Select log file", filetypes=[("Text", "*.txt"), ("All", "*.*")])
+        path = filedialog.askopenfilename(title="Select log file", filetypes=[("Text", "*.txt"), ("All", "*.*")], initialdir=DEFAULT_LOG_DIR)
         if path:
+            self.tc = TimeCounter(path)
+            self.refresh_list()
+
+    def create_new_log(self) -> None:
+        path = filedialog.asksaveasfilename(defaultextension=".txt", filetypes=[("Text", "*.txt")], initialdir=DEFAULT_LOG_DIR)
+        if path:
+            open(path, "a").close()
             self.tc = TimeCounter(path)
             self.refresh_list()
 
@@ -56,10 +65,12 @@ class App(tk.Tk):
         if not self.tc:
             return
         for period in self.tc.parse_periods():
-            period_text = f"{period.get('start','')} - {period.get('end','')} {period.get('status','')}".strip()
+            period_text = f"{period.get('start','')} - {period.get('end','')} {period.get('total_hours',0)} ч. {period.get('status','')}".strip()
             pid = self.tree.insert("", tk.END, text=period_text)
             for date in period.get("dates", []):
-                did = self.tree.insert(pid, tk.END, text=date["date"])
+                hours = date.get("hours", 0)
+                hours_str = ("%.1f" % hours).rstrip("0").rstrip(".")
+                did = self.tree.insert(pid, tk.END, text=f"{date['date']} {hours_str} ч.")
                 for note in date.get("notes", []):
                     if note == "":
                         self.tree.insert(did, tk.END, text="------------")
@@ -80,11 +91,22 @@ class App(tk.Tk):
         self.tc.add_entry(date, start, end, note)
         self.refresh_list()
 
-    def show_totals(self) -> None:
+    def add_invoice(self) -> None:
         if not self.tc:
-            messagebox.showinfo("Totals", "No data")
+            messagebox.showinfo("Info", "No data")
             return
-        messagebox.showinfo("Totals", self.tc.compute_totals())
+        periods = self.tc.parse_periods()
+        if not periods:
+            return
+        options = [f"{i}: {p['start']}-{p['end']} {p['total_hours']} ч. {p['status']}" for i, p in enumerate(periods)]
+        default = len(periods) - 1
+        choice = simpledialog.askinteger("Select period", "\n".join(options), initialvalue=default)
+        if choice is None or choice < 0 or choice >= len(periods):
+            return
+        period = periods[choice]
+        if messagebox.askyesno("Confirm", f"Add invoice for {period['start']}-{period['end']} {period['total_hours']} ч.?"):
+            self.tc.add_invoice_for_period(period)
+            self.refresh_list()
 
     def mark_paid(self) -> None:
         if not self.tc:
