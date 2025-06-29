@@ -1,8 +1,8 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 import re
-from models import Activity, TimerConfig
-from time_entry import TimeEntry
+from core.models import Activity, TimerConfig
+from ui.time_entry import TimeEntry
 
 
 class TimerEditorFrame(ttk.Frame):
@@ -142,7 +142,7 @@ class TimerEditorFrame(ttk.Frame):
         """Finish editing when clicking outside of entry widgets."""
         widget = event.widget
         entry_widgets = getattr(self, "entry_act", None), getattr(self, "time_act", None)
-        if widget not in entry_widgets:
+        if widget not in entry_widgets and widget is not self.tree:
             self.finish_edit(False)
 
     def on_tree_click(self, event):

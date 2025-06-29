@@ -1,6 +1,6 @@
 import tkinter as tk
 from tkinter import ttk
-from time_entry import TimeEntry
+from ui.time_entry import TimeEntry
 
 
 class ActivityDialog(tk.Toplevel):
