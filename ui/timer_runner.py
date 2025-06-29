@@ -1,14 +1,14 @@
 import tkinter as tk
 from tkinter import messagebox, ttk
 
-from models import TimerConfig
-from tts import speak
+from core.models import TimerConfig
+from core.tts import speak
 
 
 class TimerRunner:
     """Window that runs a configured timer."""
 
-    def __init__(self, parent, timer: TimerConfig):
+    def __init__(self, parent, timer: TimerConfig, voice_id: str | None = None):
         """Create a new top level window for running *timer*."""
         self.parent = parent
         self.timer = timer
@@ -19,6 +19,7 @@ class TimerRunner:
         self.paused = False
         self.timer_id = None
         self.state = "activity"  # activity, rest_activity, rest_set
+        self.voice_id = voice_id
 
         self.window = tk.Toplevel(parent)
         self.window.title(f"Timer: {timer.name}")
@@ -78,7 +79,7 @@ class TimerRunner:
             self.paused = False
             if self.remaining == 0:
                 self.start_current_activity()
-            speak("таймер запущен")
+            speak("таймер запущен", self.voice_id)
             self.tick()
 
     def start_current_activity(self):
@@ -87,7 +88,7 @@ class TimerRunner:
         act = self.timer.activities[self.current_index]
         self.remaining = act.duration
         self.update_display()
-        speak(act.name)
+        speak(act.name, self.voice_id)
 
     def pause(self):
         """Toggle paused state."""
@@ -106,7 +107,7 @@ class TimerRunner:
         self.remaining = 0
         self.state = "activity"
         self.update_display()
-        speak("таймер остановлен")
+        speak("таймер остановлен", self.voice_id)
 
     def next_activity(self):
         """Skip to the next timer phase."""
@@ -123,7 +124,7 @@ class TimerRunner:
             else:
                 self.state = "rest_set"
                 self.remaining = self.timer.rest_set
-            speak("отдых")
+            speak("отдых", self.voice_id)
             self.update_display()
             if auto and self.window.state() != "normal":
                 self._popup()

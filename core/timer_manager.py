@@ -1,6 +1,6 @@
 import json
 import os
-from models import TimerConfig
+from core.models import TimerConfig
 
 CONFIG_DIR = "timers"
 
