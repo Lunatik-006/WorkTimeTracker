@@ -9,11 +9,37 @@ class TimeEntry(ttk.Entry):
         self.var = tk.StringVar()
         super().__init__(master, textvariable=self.var, **kwargs)
         self.set_seconds(seconds)
+        self.editing = False
+        self.digits = ""
+        self.bind("<FocusIn>", self._on_focus_in)
         self.bind("<FocusOut>", self._on_done)
         self.bind("<Return>", self._on_done)
+        self.bind("<KeyPress>", self._on_key)
+
+    def _on_focus_in(self, event=None):
+        # Prepare for digit-based editing
+        self.editing = True
+        self.digits = "".join(ch for ch in self.var.get() if ch.isdigit())
+        self.icursor(tk.END)
+
+    def _on_key(self, event):
+        if event.keysym == "BackSpace":
+            if self.digits:
+                self.digits = self.digits[:-1]
+                self.var.set(self.digits)
+            return "break"
+        if event.char.isdigit():
+            self.digits += event.char
+            self.var.set(self.digits)
+            return "break"
 
     def _on_done(self, event=None):
-        digits = "".join(ch for ch in self.var.get() if ch.isdigit())
+        if self.editing:
+            digits = self.digits
+        else:
+            digits = "".join(ch for ch in self.var.get() if ch.isdigit())
+        self.editing = False
+        self.digits = digits
         if not digits:
             self.var.set("00:00:00")
             return
@@ -54,3 +80,4 @@ class TimeEntry(ttk.Entry):
         h, rem = divmod(int(sec), 3600)
         m, s = divmod(rem, 60)
         self.var.set(f"{h:02d}:{m:02d}:{s:02d}")
+        self.digits = f"{h:02d}{m:02d}{s:02d}".lstrip("0")

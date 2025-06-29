@@ -1,7 +1,6 @@
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk, messagebox
 from models import Activity, TimerConfig
-from activity_dialog import ActivityDialog
 from time_entry import TimeEntry
 
 
@@ -39,17 +38,20 @@ class TimerEditorFrame(ttk.Frame):
         self.time_rest_set.grid(row=9, column=0, columnspan=2, sticky="w", pady=(0, 5))
 
         ttk.Label(self, text="Activities").grid(row=10, column=0, columnspan=2, sticky="w")
-        self.listbox = tk.Listbox(self, height=8)
-        self.listbox.grid(row=11, column=0, columnspan=2, sticky="we")
-        self.listbox.bind('<Button-1>', self.set_drag_start)
-        self.listbox.bind('<B1-Motion>', self.drag_motion)
+        columns = ("time", "edit", "delete")
+        self.tree = ttk.Treeview(self, columns=columns, show="tree")
+        self.tree.grid(row=11, column=0, columnspan=2, sticky="nsew")
+        self.tree.column("#0", stretch=True)
+        self.tree.column("time", width=70, anchor="center", stretch=False)
+        self.tree.column("edit", width=30, anchor="center", stretch=False)
+        self.tree.column("delete", width=30, anchor="center", stretch=False)
+        self.tree.bind("<Button-1>", self.on_tree_click)
+        self.tree.bind("<Double-1>", self.on_tree_double)
+        self.tree.bind('<ButtonPress-1>', self.set_drag_start)
+        self.tree.bind('<B1-Motion>', self.drag_motion)
         self.drag_index = None
 
-        act_btns = ttk.Frame(self)
-        act_btns.grid(row=12, column=0, sticky="w")
-        ttk.Button(act_btns, text="Add", command=self.add_activity).grid(row=0, column=0, padx=2)
-        ttk.Button(act_btns, text="Edit", command=self.edit_activity).grid(row=0, column=1, padx=2)
-        ttk.Button(act_btns, text="Delete", command=self.delete_activity).grid(row=0, column=2, padx=2)
+        self.bind_all("<Button-1>", self._outside_click, add="+")
 
         btn_frame = ttk.Frame(self)
         btn_frame.grid(row=12, column=1, sticky="e", pady=5)
@@ -66,28 +68,38 @@ class TimerEditorFrame(ttk.Frame):
         self.spin_sets.insert(0, str(self.timer.sets))
         self.time_rest_act.set_seconds(self.timer.rest_activity)
         self.time_rest_set.set_seconds(self.timer.rest_set)
-        self.refresh_listbox()
+        self.refresh_tree()
         self.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5, pady=5)
 
     def cancel(self):
+        self.finish_edit(False)
         self.pack_forget()
         if self.close_callback:
             self.close_callback()
 
     def set_drag_start(self, event):
-        self.drag_index = self.listbox.nearest(event.y)
+        item = self.tree.identify_row(event.y)
+        if item and item != "add":
+            self.drag_index = self.tree.index(item)
+        else:
+            self.drag_index = None
 
     def drag_motion(self, event):
-        new_index = self.listbox.nearest(event.y)
+        item = self.tree.identify_row(event.y)
+        if self.drag_index is None or not item or item == "add":
+            return
+        new_index = self.tree.index(item)
         if new_index != self.drag_index:
             self.timer.activities.insert(new_index, self.timer.activities.pop(self.drag_index))
-            self.refresh_listbox()
+            self.refresh_tree()
             self.drag_index = new_index
 
-    def refresh_listbox(self):
-        self.listbox.delete(0, tk.END)
-        for act in self.timer.activities:
-            self.listbox.insert(tk.END, f"{act.name} ({self.format_time(act.duration)})")
+    def refresh_tree(self):
+        self.tree.delete(*self.tree.get_children())
+        for i, act in enumerate(self.timer.activities):
+            self.tree.insert("", "end", iid=str(i), text=act.name,
+                            values=(self.format_time(act.duration), "✏", "🗑"))
+        self.tree.insert("", "end", iid="add", text="Add activity", values=("", "➕", ""))
 
     def format_time(self, sec):
         h, rem = divmod(sec, 3600)
@@ -95,35 +107,94 @@ class TimerEditorFrame(ttk.Frame):
         return f"{h:02d}:{m:02d}:{s:02d}"
 
     def add_activity(self):
-        dlg = ActivityDialog(self)
-        self.wait_window(dlg)
-        if dlg.result:
-            name, duration = dlg.result
-            self.timer.activities.append(Activity(name, duration))
-            self.refresh_listbox()
+        new = Activity("New", 60)
+        self.timer.activities.append(new)
+        self.refresh_tree()
+        self.start_edit(str(len(self.timer.activities) - 1))
 
-    def edit_activity(self):
-        idxs = self.listbox.curselection()
-        if not idxs:
+    def edit_activity(self, iid):
+        self.start_edit(iid)
+
+    def delete_activity(self, iid):
+        index = int(iid)
+        del self.timer.activities[index]
+        self.refresh_tree()
+
+    def _outside_click(self, event):
+        widget = event.widget
+        entry_widgets = getattr(self, "entry_act", None), getattr(self, "time_act", None)
+        if widget not in entry_widgets:
+            self.finish_edit(False)
+
+    def on_tree_click(self, event):
+        item = self.tree.identify_row(event.y)
+        col = self.tree.identify_column(event.x)
+        if not item:
+            self.finish_edit(False)
             return
-        idx = idxs[0]
+        if item == "add":
+            self.finish_edit(False)
+            self.add_activity()
+            return
+        if col == "#2":
+            self.finish_edit(False)
+            self.edit_activity(item)
+        elif col == "#3":
+            self.finish_edit(False)
+            self.delete_activity(item)
+        else:
+            if self.edit_item and item != self.edit_item:
+                self.finish_edit(False)
+
+    def on_tree_double(self, event):
+        item = self.tree.identify_row(event.y)
+        if item and item != "add":
+            self.finish_edit(False)
+            self.edit_activity(item)
+
+    def start_edit(self, iid):
+        self.finish_edit(False)
+        self.edit_item = iid
+        index = int(iid)
+        act = self.timer.activities[index]
+        name_box = self.tree.bbox(iid, column="#0")
+        time_box = self.tree.bbox(iid, column="time")
+        self.entry_act = ttk.Entry(self.tree)
+        self.entry_act.insert(0, act.name)
+        self.entry_act.place(x=name_box[0], y=name_box[1], width=name_box[2])
+        self.time_act = TimeEntry(self.tree)
+        self.time_act.set_seconds(act.duration)
+        self.time_act.place(x=time_box[0], y=time_box[1], width=time_box[2])
+        self.entry_act.focus_set()
+        self.entry_act.bind("<Return>", lambda e: self.finish_edit(True))
+        self.time_act.bind("<Return>", lambda e: self.finish_edit(True))
+
+    def finish_edit(self, save):
+        if not hasattr(self, "edit_item") or self.edit_item is None:
+            return
+        name = self.entry_act.get().strip()
+        duration = self.time_act.get_seconds()
+        idx = int(self.edit_item)
         act = self.timer.activities[idx]
-        dlg = ActivityDialog(self, act)
-        self.wait_window(dlg)
-        if dlg.result:
-            name, duration = dlg.result
+        changed = name != act.name or duration != act.duration
+        if not save and changed:
+            ans = messagebox.askyesnocancel(
+                "Unsaved changes", "у вас есть несохраненные изменения"
+            )
+            if ans is None:
+                return
+            if ans:
+                save = True
+        if save:
             act.name = name
             act.duration = duration
-            self.refresh_listbox()
-
-    def delete_activity(self):
-        idxs = self.listbox.curselection()
-        if not idxs:
-            return
-        del self.timer.activities[idxs[0]]
-        self.refresh_listbox()
+        self.entry_act.destroy()
+        self.time_act.destroy()
+        self.edit_item = None
+        self.refresh_tree()
 
     def save(self):
+        self.finish_edit(True)
         self.timer.name = self.entry_name.get().strip()
         self.timer.description = self.text_desc.get("1.0", "end").strip()
         self.timer.sets = int(self.spin_sets.get())
