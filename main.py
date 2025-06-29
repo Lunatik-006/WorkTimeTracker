@@ -9,7 +9,9 @@ class MainApp(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("Pomodoro Timer")
-        self.geometry("700x550")
+        self.normal_geometry = "300x550"
+        self.editor_geometry = "700x550"
+        self.geometry(self.normal_geometry)
         self.manager = TimerManager()
         self.editor = TimerEditorFrame(self, self.manager, self.on_editor_closed)
         self.create_widgets()
@@ -17,6 +19,7 @@ class MainApp(tk.Tk):
     def on_editor_closed(self):
         self.manager.load_timers()
         self.refresh_timer_list()
+        self.geometry(self.normal_geometry)
 
     def create_widgets(self):
         left = ttk.Frame(self)
@@ -51,6 +54,7 @@ class MainApp(tk.Tk):
 
     def new_timer(self):
         self.editor.edit_timer()
+        self.geometry(self.editor_geometry)
 
     def edit_timer(self):
         name = self.get_selected_name()
@@ -58,6 +62,7 @@ class MainApp(tk.Tk):
             return
         timer = self.manager.timers[name]
         self.editor.edit_timer(timer)
+        self.geometry(self.editor_geometry)
 
     def delete_timer(self):
         name = self.get_selected_name()
