@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
+import re
 from models import Activity, TimerConfig
 from time_entry import TimeEntry
 
@@ -12,29 +13,30 @@ class TimerEditorFrame(ttk.Frame):
         self.manager = manager
         self.close_callback = close_callback
         self.timer = None
+        self.edit_item = None
         self._build_widgets()
         self.grid_columnconfigure(0, weight=1)
         self.grid_columnconfigure(1, weight=1)
 
     def _build_widgets(self):
         ttk.Label(self, text="Name").grid(row=0, column=0, columnspan=2, sticky="w")
-        self.entry_name = ttk.Entry(self)
+        self.entry_name = ttk.Entry(self, width=40)
         self.entry_name.grid(row=1, column=0, columnspan=2, sticky="we", pady=(0, 5))
 
         ttk.Label(self, text="Description").grid(row=2, column=0, columnspan=2, sticky="w")
-        self.text_desc = tk.Text(self, height=3, width=30)
+        self.text_desc = tk.Text(self, height=4, width=40)
         self.text_desc.grid(row=3, column=0, columnspan=2, sticky="we", pady=(0, 5))
 
         ttk.Label(self, text="Sets").grid(row=4, column=0, columnspan=2, sticky="w")
-        self.spin_sets = ttk.Spinbox(self, from_=1, to=20, width=5)
+        self.spin_sets = ttk.Spinbox(self, from_=1, to=99, width=5)
         self.spin_sets.grid(row=5, column=0, columnspan=2, sticky="w", pady=(0, 5))
 
         ttk.Label(self, text="Rest between activities").grid(row=6, column=0, columnspan=2, sticky="w")
-        self.time_rest_act = TimeEntry(self)
+        self.time_rest_act = TimeEntry(self, width=8)
         self.time_rest_act.grid(row=7, column=0, columnspan=2, sticky="w", pady=(0, 5))
 
         ttk.Label(self, text="Rest between sets").grid(row=8, column=0, columnspan=2, sticky="w")
-        self.time_rest_set = TimeEntry(self)
+        self.time_rest_set = TimeEntry(self, width=8)
         self.time_rest_set.grid(row=9, column=0, columnspan=2, sticky="w", pady=(0, 5))
 
         ttk.Label(self, text="Activities").grid(row=10, column=0, columnspan=2, sticky="w")
@@ -55,8 +57,8 @@ class TimerEditorFrame(ttk.Frame):
 
         btn_frame = ttk.Frame(self)
         btn_frame.grid(row=12, column=1, sticky="e", pady=5)
-        ttk.Button(btn_frame, text="Save", command=self.save).grid(row=0, column=0, padx=2)
-        ttk.Button(btn_frame, text="Cancel", command=self.cancel).grid(row=0, column=1, padx=2)
+        ttk.Button(btn_frame, text="Save", width=10, command=self.save).grid(row=0, column=0, padx=2)
+        ttk.Button(btn_frame, text="Cancel", width=10, command=self.cancel).grid(row=0, column=1, padx=2)
 
     def edit_timer(self, timer=None):
         self.timer = timer or TimerConfig("New Timer")
@@ -143,7 +145,7 @@ class TimerEditorFrame(ttk.Frame):
             self.finish_edit(False)
             self.delete_activity(item)
         else:
-            if self.edit_item and item != self.edit_item:
+            if getattr(self, "edit_item", None) and item != self.edit_item:
                 self.finish_edit(False)
 
     def on_tree_double(self, event):
@@ -195,9 +197,26 @@ class TimerEditorFrame(ttk.Frame):
 
     def save(self):
         self.finish_edit(True)
-        self.timer.name = self.entry_name.get().strip()
-        self.timer.description = self.text_desc.get("1.0", "end").strip()
-        self.timer.sets = int(self.spin_sets.get())
+        name = self.entry_name.get().strip()
+        if not name or not re.fullmatch(r"[\w\- ]{1,50}", name):
+            messagebox.showerror(
+                "Invalid name",
+                "Name must be 1-50 characters: letters, digits, spaces, '_' or '-'",
+            )
+            return
+        desc = self.text_desc.get("1.0", "end").strip()
+        if len(desc) > 200:
+            messagebox.showerror(
+                "Invalid description",
+                "Description must be less than 200 characters",
+            )
+            return
+        sets = int(self.spin_sets.get())
+        if sets > 99:
+            sets = 99
+        self.timer.name = name
+        self.timer.description = desc
+        self.timer.sets = sets
         self.timer.rest_activity = self.time_rest_act.get_seconds()
         self.timer.rest_set = self.time_rest_set.get_seconds()
         self.manager.save_timer(self.timer)
