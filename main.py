@@ -14,8 +14,8 @@ class MainApp(tk.Tk):
         # until the user creates or edits a timer.
         self.title("Pomodoro Timer")
         # Geometry for compact view and when the editor is visible
-        self.normal_geometry = "300x550"
-        self.editor_geometry = "700x550"
+        self.normal_geometry = "260x500"
+        self.editor_geometry = "620x500"
         self.geometry(self.normal_geometry)
         # TimerManager loads configurations from disk
         self.manager = TimerManager()
