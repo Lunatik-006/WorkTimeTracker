@@ -27,7 +27,7 @@ class TimerEditorFrame(ttk.Frame):
         self.entry_name.grid(row=1, column=0, columnspan=2, sticky="we", pady=(0, 5))
 
         ttk.Label(self, text="Description").grid(row=2, column=0, columnspan=2, sticky="w")
-        self.text_desc = tk.Text(self, height=4, width=40)
+        self.text_desc = tk.Text(self, height=2, width=40, wrap="word")
         self.text_desc.grid(row=3, column=0, columnspan=2, sticky="we", pady=(0, 5))
 
         ttk.Label(self, text="Sets").grid(row=4, column=0, columnspan=2, sticky="w")
@@ -44,7 +44,7 @@ class TimerEditorFrame(ttk.Frame):
 
         ttk.Label(self, text="Activities").grid(row=10, column=0, columnspan=2, sticky="w")
         columns = ("time", "edit", "delete")
-        self.tree = ttk.Treeview(self, columns=columns, show="tree")
+        self.tree = ttk.Treeview(self, columns=columns, show="tree", height=5)
         self.tree.grid(row=11, column=0, columnspan=2, sticky="nsew")
         self.tree.column("#0", stretch=True)
         self.tree.column("time", width=70, anchor="center", stretch=False)
@@ -52,8 +52,8 @@ class TimerEditorFrame(ttk.Frame):
         self.tree.column("delete", width=30, anchor="center", stretch=False)
         self.tree.bind("<Button-1>", self.on_tree_click)
         self.tree.bind("<Double-1>", self.on_tree_double)
-        self.tree.bind('<ButtonPress-1>', self.set_drag_start)
-        self.tree.bind('<B1-Motion>', self.drag_motion)
+        self.tree.bind('<ButtonPress-1>', self.set_drag_start, add="+")
+        self.tree.bind('<B1-Motion>', self.drag_motion, add="+")
         self.drag_index = None
 
         self.bind_all("<Button-1>", self._outside_click, add="+")
@@ -110,6 +110,7 @@ class TimerEditorFrame(ttk.Frame):
             self.tree.insert("", "end", iid=str(i), text=act.name,
                             values=(self.format_time(act.duration), "✏", "🗑"))
         self.tree.insert("", "end", iid="add", text="Add activity", values=("", "➕", ""))
+        self.tree.config(height=min(len(self.timer.activities) + 1, 26))
 
     def format_time(self, sec):
         """Format seconds as HH:MM:SS string."""
@@ -119,6 +120,9 @@ class TimerEditorFrame(ttk.Frame):
 
     def add_activity(self):
         """Append a new default activity and start editing it."""
+        if len(self.timer.activities) >= 25:
+            messagebox.showwarning("Limit", "Maximum 25 activities per timer")
+            return
         new = Activity("New", 60)
         self.timer.activities.append(new)
         self.refresh_tree()
