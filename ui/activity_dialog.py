@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import ttk
 from ui.time_entry import TimeEntry
+from core.i18n import tr
 
 
 class ActivityDialog(tk.Toplevel):
@@ -8,22 +9,26 @@ class ActivityDialog(tk.Toplevel):
 
     def __init__(self, parent, activity=None):
         super().__init__(parent)
-        self.title("Activity")
+        self.title(tr("Activity"))
         self.resizable(False, False)
         self.result = None
 
-        ttk.Label(self, text="Name").grid(row=0, column=0, sticky="w")
+        self.lbl_name = ttk.Label(self, text=tr("Name"))
+        self.lbl_name.grid(row=0, column=0, sticky="w")
         self.entry_name = ttk.Entry(self)
         self.entry_name.grid(row=1, column=0, padx=5, sticky="we")
 
-        ttk.Label(self, text="Duration").grid(row=2, column=0, sticky="w")
+        self.lbl_duration = ttk.Label(self, text=tr("Duration"))
+        self.lbl_duration.grid(row=2, column=0, sticky="w")
         self.time_entry = TimeEntry(self)
         self.time_entry.grid(row=3, column=0, padx=5, sticky="we")
 
         btn = ttk.Frame(self)
         btn.grid(row=4, column=0, pady=5, sticky="e")
-        ttk.Button(btn, text="OK", command=self._ok).grid(row=0, column=0, padx=2)
-        ttk.Button(btn, text="Cancel", command=self.destroy).grid(row=0, column=1, padx=2)
+        self.btn_ok = ttk.Button(btn, text=tr("OK"), command=self._ok)
+        self.btn_ok.grid(row=0, column=0, padx=2)
+        self.btn_cancel = ttk.Button(btn, text=tr("Cancel"), command=self.destroy)
+        self.btn_cancel.grid(row=0, column=1, padx=2)
 
         if activity:
             # Pre-fill fields when editing an existing activity
@@ -31,6 +36,17 @@ class ActivityDialog(tk.Toplevel):
             self.time_entry.set_seconds(activity.duration)
 
         self.columnconfigure(0, weight=1)
+        self.update_idletasks()
+        x = parent.winfo_rootx() + (parent.winfo_width() - self.winfo_width()) // 2
+        y = parent.winfo_rooty() + (parent.winfo_height() - self.winfo_height()) // 2
+        self.geometry(f"+{x}+{y}")
+
+    def apply_i18n(self):
+        self.title(tr("Activity"))
+        self.lbl_name.config(text=tr("Name"))
+        self.lbl_duration.config(text=tr("Duration"))
+        self.btn_ok.config(text=tr("OK"))
+        self.btn_cancel.config(text=tr("Cancel"))
 
     def _ok(self):
         """Validate input and close the dialog with result."""

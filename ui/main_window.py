@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 from core.timer_manager import TimerManager
 from core.settings import Settings
+from core.i18n import tr, set_language
 from ui.timer_editor import TimerEditorFrame
 from ui.timer_runner import TimerRunner
 from ui.settings_dialog import SettingsDialog
@@ -20,11 +21,13 @@ class MainApp(tk.Tk):
         self.editor_geometry = "620x500"
         self.geometry(self.normal_geometry)
         self.settings = Settings.load()
+        set_language(self.settings.app_lang)
         # TimerManager loads configurations from disk
         self.manager = TimerManager()
         # Editor frame is created once and shown/hidden as needed
         self.editor = TimerEditorFrame(self, self.manager, self.on_editor_closed)
         self.create_widgets()
+        self.apply_i18n()
 
     def on_editor_closed(self):
         """Reload timers after the editor window is closed."""
@@ -35,16 +38,17 @@ class MainApp(tk.Tk):
     def create_widgets(self):
         """Build the list of timers and control buttons."""
 
-        menubar = tk.Menu(self)
-        menu_settings = tk.Menu(menubar, tearoff=0)
-        menu_settings.add_command(label="Open", command=self.open_settings)
-        menubar.add_cascade(label="\u2699", menu=menu_settings)
-        self.config(menu=menubar)
+        self.menubar = tk.Menu(self)
+        self.menu_settings = tk.Menu(self.menubar, tearoff=0)
+        self.menu_settings.add_command(label="Open", command=self.open_settings)
+        self.menubar.add_cascade(label="\u2699", menu=self.menu_settings)
+        self.config(menu=self.menubar)
 
         left = ttk.Frame(self)
         left.pack(side=tk.LEFT, fill=tk.Y, padx=5, pady=5)
 
-        ttk.Label(left, text="Timers").pack(anchor="w")
+        self.label_timers = ttk.Label(left, text="Timers")
+        self.label_timers.pack(anchor="w")
         columns = ("edit", "run", "delete")  # icons for actions
         self.timer_list = ttk.Treeview(left, columns=columns, show="tree")
         self.timer_list.column("#0", stretch=True)
@@ -56,7 +60,8 @@ class MainApp(tk.Tk):
         self.timer_list.bind("<Delete>", self.on_delete_key)
         self.refresh_timer_list()
 
-        ttk.Button(left, text="+ New Timer", command=self.new_timer).pack(pady=5, fill=tk.X)
+        self.btn_new = ttk.Button(left, text="+ New Timer", command=self.new_timer)
+        self.btn_new.pack(pady=5, fill=tk.X)
 
         self.editor.pack_forget()
 
@@ -91,7 +96,7 @@ class MainApp(tk.Tk):
         name = self.get_selected_name()
         if not name:
             return
-        if messagebox.askokcancel("Delete", f"Вы действительно хотите удалить таймер '{name}'?"):
+        if messagebox.askokcancel(tr("Delete"), tr("Timer name delete confirm").format(name=name)):
             self.manager.delete_timer(name)
             self.refresh_timer_list()
 
@@ -101,7 +106,7 @@ class MainApp(tk.Tk):
         if not name:
             return
         timer = self.manager.timers[name]
-        TimerRunner(self, timer, self.settings.voice)
+        TimerRunner(self, timer, self.settings)
 
     def on_double_click(self, event):
         """Handle double click on a timer to open the editor."""
@@ -131,6 +136,13 @@ class MainApp(tk.Tk):
     def open_settings(self):
         """Show settings dialog."""
         SettingsDialog(self, self.settings)
+
+    def apply_i18n(self):
+        self.title(tr("Pomodoro Timer"))
+        self.menu_settings.entryconfig(0, label=tr("Open"))
+        self.label_timers.config(text=tr("Timers"))
+        self.btn_new.config(text=tr("+ New Timer"))
+        self.editor.apply_i18n()
 
 
 def main():

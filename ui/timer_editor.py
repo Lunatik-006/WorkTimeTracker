@@ -3,6 +3,7 @@ from tkinter import ttk, messagebox
 import re
 from core.models import Activity, TimerConfig
 from ui.time_entry import TimeEntry
+from core.i18n import tr
 
 
 class TimerEditorFrame(ttk.Frame):
@@ -22,27 +23,33 @@ class TimerEditorFrame(ttk.Frame):
 
     def _build_widgets(self):
         """Construct the form for editing timer properties."""
-        ttk.Label(self, text="Name").grid(row=0, column=0, columnspan=2, sticky="w")
+        self.lbl_name = ttk.Label(self, text="Name")
+        self.lbl_name.grid(row=0, column=0, columnspan=2, sticky="w")
         self.entry_name = ttk.Entry(self, width=40)
         self.entry_name.grid(row=1, column=0, columnspan=2, sticky="we", pady=(0, 5))
 
-        ttk.Label(self, text="Description").grid(row=2, column=0, columnspan=2, sticky="w")
+        self.lbl_desc = ttk.Label(self, text="Description")
+        self.lbl_desc.grid(row=2, column=0, columnspan=2, sticky="w")
         self.text_desc = tk.Text(self, height=2, width=40, wrap="word")
         self.text_desc.grid(row=3, column=0, columnspan=2, sticky="we", pady=(0, 5))
 
-        ttk.Label(self, text="Sets").grid(row=4, column=0, columnspan=2, sticky="w")
+        self.lbl_sets = ttk.Label(self, text="Sets")
+        self.lbl_sets.grid(row=4, column=0, columnspan=2, sticky="w")
         self.spin_sets = ttk.Spinbox(self, from_=1, to=99, width=5)
         self.spin_sets.grid(row=5, column=0, columnspan=2, sticky="w", pady=(0, 5))
 
-        ttk.Label(self, text="Rest between activities").grid(row=6, column=0, columnspan=2, sticky="w")
+        self.lbl_rest_act = ttk.Label(self, text="Rest between activities")
+        self.lbl_rest_act.grid(row=6, column=0, columnspan=2, sticky="w")
         self.time_rest_act = TimeEntry(self, width=8)
         self.time_rest_act.grid(row=7, column=0, columnspan=2, sticky="w", pady=(0, 5))
 
-        ttk.Label(self, text="Rest between sets").grid(row=8, column=0, columnspan=2, sticky="w")
+        self.lbl_rest_set = ttk.Label(self, text="Rest between sets")
+        self.lbl_rest_set.grid(row=8, column=0, columnspan=2, sticky="w")
         self.time_rest_set = TimeEntry(self, width=8)
         self.time_rest_set.grid(row=9, column=0, columnspan=2, sticky="w", pady=(0, 5))
 
-        ttk.Label(self, text="Activities").grid(row=10, column=0, columnspan=2, sticky="w")
+        self.lbl_acts = ttk.Label(self, text="Activities")
+        self.lbl_acts.grid(row=10, column=0, columnspan=2, sticky="w")
         columns = ("time", "edit", "delete")
         self.tree = ttk.Treeview(self, columns=columns, show="tree", height=5)
         self.tree.grid(row=11, column=0, columnspan=2, sticky="nsew")
@@ -60,9 +67,22 @@ class TimerEditorFrame(ttk.Frame):
 
         btn_frame = ttk.Frame(self)
         btn_frame.grid(row=12, column=1, sticky="e", pady=5)
-        ttk.Button(btn_frame, text="Save", width=10, command=self.save).grid(row=0, column=0, padx=2)
-        ttk.Button(btn_frame, text="Cancel", width=10, command=self.cancel).grid(row=0, column=1, padx=2)
+        self.btn_save = ttk.Button(btn_frame, text="Save", width=10, command=self.save)
+        self.btn_save.grid(row=0, column=0, padx=2)
+        self.btn_cancel = ttk.Button(btn_frame, text="Cancel", width=10, command=self.cancel)
+        self.btn_cancel.grid(row=0, column=1, padx=2)
 
+    def apply_i18n(self):
+        from core.i18n import tr
+        self.lbl_name.config(text=tr("Name"))
+        self.lbl_desc.config(text=tr("Description"))
+        self.lbl_sets.config(text=tr("Sets"))
+        self.lbl_rest_act.config(text=tr("Rest between activities"))
+        self.lbl_rest_set.config(text=tr("Rest between sets"))
+        self.lbl_acts.config(text=tr("Activities"))
+        self.btn_save.config(text=tr("Save"))
+        self.btn_cancel.config(text=tr("Cancel"))
+        
     def edit_timer(self, timer=None):
         """Populate widgets with timer data and show the editor."""
         self.timer = timer or TimerConfig("New Timer")
@@ -109,7 +129,8 @@ class TimerEditorFrame(ttk.Frame):
         for i, act in enumerate(self.timer.activities):
             self.tree.insert("", "end", iid=str(i), text=act.name,
                             values=(self.format_time(act.duration), "✏", "🗑"))
-        self.tree.insert("", "end", iid="add", text="Add activity", values=("", "➕", ""))
+        from core.i18n import tr
+        self.tree.insert("", "end", iid="add", text=tr("Add activity"), values=("", "➕", ""))
         self.tree.config(height=min(len(self.timer.activities) + 1, 26))
 
     def format_time(self, sec):
@@ -121,7 +142,8 @@ class TimerEditorFrame(ttk.Frame):
     def add_activity(self):
         """Append a new default activity and start editing it."""
         if len(self.timer.activities) >= 25:
-            messagebox.showwarning("Limit", "Maximum 25 activities per timer")
+            from core.i18n import tr
+            messagebox.showwarning(tr("Limit"), tr("Maximum 25 activities per timer"))
             return
         new = Activity("New", 60)
         self.timer.activities.append(new)
@@ -201,8 +223,9 @@ class TimerEditorFrame(ttk.Frame):
         act = self.timer.activities[idx]
         changed = name != act.name or duration != act.duration
         if not save and changed:
+            from core.i18n import tr
             ans = messagebox.askyesnocancel(
-                "Unsaved changes", "у вас есть несохраненные изменения"
+                tr("Unsaved changes"), tr("у вас есть несохраненные изменения")
             )
             if ans is None:
                 return
@@ -221,16 +244,18 @@ class TimerEditorFrame(ttk.Frame):
         self.finish_edit(True)
         name = self.entry_name.get().strip()
         if not name or not re.fullmatch(r"[\w\- ]{1,50}", name):
+            from core.i18n import tr
             messagebox.showerror(
-                "Invalid name",
-                "Name must be 1-50 characters: letters, digits, spaces, '_' or '-'",
+                tr("Invalid name"),
+                tr("Name must be 1-50 characters: letters, digits, spaces, '_' or '-'"),
             )
             return
         desc = self.text_desc.get("1.0", "end").strip()
         if len(desc) > 200:
+            from core.i18n import tr
             messagebox.showerror(
-                "Invalid description",
-                "Description must be less than 200 characters",
+                tr("Invalid description"),
+                tr("Description must be less than 200 characters"),
             )
             return
         sets = int(self.spin_sets.get())
