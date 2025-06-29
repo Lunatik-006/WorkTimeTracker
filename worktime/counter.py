@@ -294,3 +294,37 @@ class TimeCounter:
         insert_pos = period.get('end_idx', len(self.lines) - 1) + 1
         self.lines.insert(insert_pos, line)
         self.save()
+
+    # basic editing helpers used by the GUI
+    def update_line(self, index: int, new_line: str) -> None:
+        """Replace a log line at *index* with *new_line* and save."""
+        if index < 0 or index >= len(self.lines):
+            return
+        self.lines[index] = new_line
+        self.save()
+
+    def insert_line_after(self, index: int, line: str) -> None:
+        """Insert *line* after the given *index* and save."""
+        if index < -1 or index >= len(self.lines):
+            index = len(self.lines) - 1
+        self.lines.insert(index + 1, line)
+        self.save()
+
+    def insert_date_after(self, index: int, date: str) -> None:
+        """Insert a new date section after *index* and save."""
+        self.insert_line_after(index, date)
+        self.insert_line_after(index + 1, "")
+
+    def change_status(self, index: int, status: str) -> None:
+        """Change invoice status on the specified line."""
+        if index < 0 or index >= len(self.lines):
+            return
+        line = self.lines[index]
+        if INVOICED in line:
+            line = line.replace(INVOICED, status)
+        elif PAID in line:
+            line = line.replace(PAID, status)
+        else:
+            line = f"{line} {status}"
+        self.lines[index] = line
+        self.save()
