@@ -11,14 +11,17 @@ class TimerEditorFrame(ttk.Frame):
     def __init__(self, parent, manager, close_callback):
         super().__init__(parent)
         self.manager = manager
+        # Function to call when the editor is closed
         self.close_callback = close_callback
         self.timer = None
         self.edit_item = None
+        # Build all child widgets once during initialisation
         self._build_widgets()
         self.grid_columnconfigure(0, weight=1)
         self.grid_columnconfigure(1, weight=1)
 
     def _build_widgets(self):
+        """Construct the form for editing timer properties."""
         ttk.Label(self, text="Name").grid(row=0, column=0, columnspan=2, sticky="w")
         self.entry_name = ttk.Entry(self, width=40)
         self.entry_name.grid(row=1, column=0, columnspan=2, sticky="we", pady=(0, 5))
@@ -61,6 +64,7 @@ class TimerEditorFrame(ttk.Frame):
         ttk.Button(btn_frame, text="Cancel", width=10, command=self.cancel).grid(row=0, column=1, padx=2)
 
     def edit_timer(self, timer=None):
+        """Populate widgets with timer data and show the editor."""
         self.timer = timer or TimerConfig("New Timer")
         self.entry_name.delete(0, tk.END)
         self.entry_name.insert(0, self.timer.name)
@@ -74,12 +78,14 @@ class TimerEditorFrame(ttk.Frame):
         self.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5, pady=5)
 
     def cancel(self):
+        """Close the editor without saving changes."""
         self.finish_edit(False)
         self.pack_forget()
         if self.close_callback:
             self.close_callback()
 
     def set_drag_start(self, event):
+        """Remember the index of the activity being dragged."""
         item = self.tree.identify_row(event.y)
         if item and item != "add":
             self.drag_index = self.tree.index(item)
@@ -87,6 +93,7 @@ class TimerEditorFrame(ttk.Frame):
             self.drag_index = None
 
     def drag_motion(self, event):
+        """Handle drag-and-drop reordering inside the activity list."""
         item = self.tree.identify_row(event.y)
         if self.drag_index is None or not item or item == "add":
             return
@@ -97,6 +104,7 @@ class TimerEditorFrame(ttk.Frame):
             self.drag_index = new_index
 
     def refresh_tree(self):
+        """Refresh activity tree widget from the timer model."""
         self.tree.delete(*self.tree.get_children())
         for i, act in enumerate(self.timer.activities):
             self.tree.insert("", "end", iid=str(i), text=act.name,
@@ -104,31 +112,37 @@ class TimerEditorFrame(ttk.Frame):
         self.tree.insert("", "end", iid="add", text="Add activity", values=("", "➕", ""))
 
     def format_time(self, sec):
+        """Format seconds as HH:MM:SS string."""
         h, rem = divmod(sec, 3600)
         m, s = divmod(rem, 60)
         return f"{h:02d}:{m:02d}:{s:02d}"
 
     def add_activity(self):
+        """Append a new default activity and start editing it."""
         new = Activity("New", 60)
         self.timer.activities.append(new)
         self.refresh_tree()
         self.start_edit(str(len(self.timer.activities) - 1))
 
     def edit_activity(self, iid):
+        """Begin editing the activity with the given tree id."""
         self.start_edit(iid)
 
     def delete_activity(self, iid):
+        """Remove activity from the timer."""
         index = int(iid)
         del self.timer.activities[index]
         self.refresh_tree()
 
     def _outside_click(self, event):
+        """Finish editing when clicking outside of entry widgets."""
         widget = event.widget
         entry_widgets = getattr(self, "entry_act", None), getattr(self, "time_act", None)
         if widget not in entry_widgets:
             self.finish_edit(False)
 
     def on_tree_click(self, event):
+        """Handle single click actions on the activity tree."""
         item = self.tree.identify_row(event.y)
         col = self.tree.identify_column(event.x)
         if not item:
@@ -149,12 +163,14 @@ class TimerEditorFrame(ttk.Frame):
                 self.finish_edit(False)
 
     def on_tree_double(self, event):
+        """Double click opens the selected activity for editing."""
         item = self.tree.identify_row(event.y)
         if item and item != "add":
             self.finish_edit(False)
             self.edit_activity(item)
 
     def start_edit(self, iid):
+        """Place entry widgets on top of the selected tree row."""
         self.finish_edit(False)
         self.edit_item = iid
         index = int(iid)
@@ -172,6 +188,7 @@ class TimerEditorFrame(ttk.Frame):
         self.time_act.bind("<Return>", lambda e: self.finish_edit(True))
 
     def finish_edit(self, save):
+        """Finalize editing of an activity, optionally saving changes."""
         if not hasattr(self, "edit_item") or self.edit_item is None:
             return
         name = self.entry_act.get().strip()
@@ -196,6 +213,7 @@ class TimerEditorFrame(ttk.Frame):
         self.refresh_tree()
 
     def save(self):
+        """Validate inputs and write the timer to disk."""
         self.finish_edit(True)
         name = self.entry_name.get().strip()
         if not name or not re.fullmatch(r"[\w\- ]{1,50}", name):

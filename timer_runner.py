@@ -9,6 +9,7 @@ class TimerRunner:
     """Window that runs a configured timer."""
 
     def __init__(self, parent, timer: TimerConfig):
+        """Create a new top level window for running *timer*."""
         self.parent = parent
         self.timer = timer
         self.current_set = 1
@@ -58,6 +59,7 @@ class TimerRunner:
         return f"{h:02d}:{m:02d}:{s:02d}"
 
     def update_display(self):
+        """Refresh labels based on current state and remaining time."""
         if self.state == "activity" and self.current_index < len(self.timer.activities):
             act = self.timer.activities[self.current_index]
             self.label_activity.config(
@@ -70,6 +72,7 @@ class TimerRunner:
         self.label_time.config(text=self.format_time(self.remaining))
 
     def start(self):
+        """Begin or resume timer execution."""
         if not self.running:
             self.running = True
             self.paused = False
@@ -79,6 +82,7 @@ class TimerRunner:
             self.tick()
 
     def start_current_activity(self):
+        """Switch state to the current activity and announce it."""
         self.state = "activity"
         act = self.timer.activities[self.current_index]
         self.remaining = act.duration
@@ -86,12 +90,14 @@ class TimerRunner:
         speak(act.name)
 
     def pause(self):
+        """Toggle paused state."""
         if self.running:
             self.paused = not self.paused
             if not self.paused:
                 self.tick()
 
     def stop(self):
+        """Reset timer to its initial state."""
         if self.running and self.timer_id:
             self.window.after_cancel(self.timer_id)
         self.running = False
@@ -103,11 +109,13 @@ class TimerRunner:
         speak("таймер остановлен")
 
     def next_activity(self):
+        """Skip to the next timer phase."""
         if self.running and self.timer_id:
             self.window.after_cancel(self.timer_id)
         self.advance()
 
     def advance(self, auto=False):
+        """Move to the next logical phase of the timer."""
         if self.state == "activity":
             if self.current_index < len(self.timer.activities) - 1:
                 self.state = "rest_activity"
@@ -141,6 +149,7 @@ class TimerRunner:
                 self.tick()
 
     def tick(self):
+        """One second timer callback handling countdown."""
         if not self.running or self.paused:
             return
         if self.remaining > 0:

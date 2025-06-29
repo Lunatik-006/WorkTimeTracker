@@ -26,12 +26,14 @@ class ActivityDialog(tk.Toplevel):
         ttk.Button(btn, text="Cancel", command=self.destroy).grid(row=0, column=1, padx=2)
 
         if activity:
+            # Pre-fill fields when editing an existing activity
             self.entry_name.insert(0, activity.name)
             self.time_entry.set_seconds(activity.duration)
 
         self.columnconfigure(0, weight=1)
 
     def _ok(self):
+        """Validate input and close the dialog with result."""
         name = self.entry_name.get().strip()
         if not name:
             return

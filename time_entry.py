@@ -23,6 +23,7 @@ class TimeEntry(ttk.Entry):
         self.icursor(tk.END)
 
     def _on_key(self, event):
+        """Handle digit entry and backspace when editing."""
         if event.keysym == "BackSpace":
             if self.digits:
                 self.digits = self.digits[:-1]
@@ -34,6 +35,7 @@ class TimeEntry(ttk.Entry):
             return "break"
 
     def _on_done(self, event=None):
+        """Finalize user input converting it to HH:MM:SS."""
         if self.editing:
             digits = self.digits
         else:
@@ -55,6 +57,7 @@ class TimeEntry(ttk.Entry):
         return "break" if event and event.keysym == "Return" else None
 
     def get_seconds(self) -> int:
+        """Return the value from the widget in seconds."""
         text = self.var.get()
         if ":" not in text:
             digits = "".join(ch for ch in text if ch.isdigit())
@@ -77,6 +80,7 @@ class TimeEntry(ttk.Entry):
         return hours * 3600 + minutes * 60 + sec
 
     def set_seconds(self, sec: int):
+        """Set the entry contents from a number of seconds."""
         h, rem = divmod(int(sec), 3600)
         m, s = divmod(rem, 60)
         self.var.set(f"{h:02d}:{m:02d}:{s:02d}")

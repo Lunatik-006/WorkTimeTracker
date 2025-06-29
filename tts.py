@@ -9,9 +9,11 @@ _engine = None
 def speak(text: str) -> None:
     """Speak the provided text if TTS support is available."""
     global _engine
+    # Skip if the optional dependency is missing
     if pyttsx3 is None:
         return
     if _engine is None:
+        # Initialise the TTS engine only once
         try:
             _engine = pyttsx3.init()
         except Exception:

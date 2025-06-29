@@ -6,27 +6,37 @@ from timer_runner import TimerRunner
 
 
 class MainApp(tk.Tk):
+    """Main window with the list of timers and editor frame."""
+
     def __init__(self):
         super().__init__()
+        # When started we show the list of saved timers. The editor is hidden
+        # until the user creates or edits a timer.
         self.title("Pomodoro Timer")
+        # Geometry for compact view and when the editor is visible
         self.normal_geometry = "300x550"
         self.editor_geometry = "700x550"
         self.geometry(self.normal_geometry)
+        # TimerManager loads configurations from disk
         self.manager = TimerManager()
+        # Editor frame is created once and shown/hidden as needed
         self.editor = TimerEditorFrame(self, self.manager, self.on_editor_closed)
         self.create_widgets()
 
     def on_editor_closed(self):
+        """Reload timers after the editor window is closed."""
         self.manager.load_timers()
         self.refresh_timer_list()
         self.geometry(self.normal_geometry)
 
     def create_widgets(self):
+        """Build the list of timers and control buttons."""
+
         left = ttk.Frame(self)
         left.pack(side=tk.LEFT, fill=tk.Y, padx=5, pady=5)
 
         ttk.Label(left, text="Timers").pack(anchor="w")
-        columns = ("edit", "run", "delete")
+        columns = ("edit", "run", "delete")  # icons for actions
         self.timer_list = ttk.Treeview(left, columns=columns, show="tree")
         self.timer_list.column("#0", stretch=True)
         for col in columns:
@@ -42,6 +52,7 @@ class MainApp(tk.Tk):
         self.editor.pack_forget()
 
     def refresh_timer_list(self):
+        """Populate the tree widget with available timers."""
         self.timer_list.delete(*self.timer_list.get_children())
         for name in sorted(self.manager.timers.keys()):
             self.timer_list.insert("", tk.END, iid=name, text=name, values=("✏", "▶", "🗑"))
@@ -53,10 +64,12 @@ class MainApp(tk.Tk):
         return sel[0]
 
     def new_timer(self):
+        """Open the editor to create a new timer."""
         self.editor.edit_timer()
         self.geometry(self.editor_geometry)
 
     def edit_timer(self):
+        """Edit the currently selected timer."""
         name = self.get_selected_name()
         if not name:
             return
@@ -65,6 +78,7 @@ class MainApp(tk.Tk):
         self.geometry(self.editor_geometry)
 
     def delete_timer(self):
+        """Delete the selected timer after confirmation."""
         name = self.get_selected_name()
         if not name:
             return
@@ -73,6 +87,7 @@ class MainApp(tk.Tk):
             self.refresh_timer_list()
 
     def run_timer(self):
+        """Launch the timer runner window for the selection."""
         name = self.get_selected_name()
         if not name:
             return
@@ -80,12 +95,14 @@ class MainApp(tk.Tk):
         TimerRunner(self, timer)
 
     def on_double_click(self, event):
+        """Handle double click on a timer to open the editor."""
         item = self.timer_list.identify_row(event.y)
         if item:
             self.timer_list.selection_set(item)
             self.edit_timer()
 
     def on_click(self, event):
+        """Handle clicks on action columns of the tree view."""
         item = self.timer_list.identify_row(event.y)
         col = self.timer_list.identify_column(event.x)
         if not item or col == "#0":
@@ -99,6 +116,7 @@ class MainApp(tk.Tk):
             self.delete_timer()
 
     def on_delete_key(self, event):
+        """Keyboard shortcut for deleting a timer."""
         self.delete_timer()
 
 
