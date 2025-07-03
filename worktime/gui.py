@@ -1,10 +1,200 @@
 import tkinter as tk
 from tkinter import filedialog, messagebox, simpledialog, ttk
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
 
 from .counter import TimeCounter
-from .constants import DATE_PATTERN, TIME_PATTERN, DEFAULT_LOG_DIR, INVOICED, PAID
+from .constants import (
+    DATE_PATTERN,
+    TIME_PATTERN,
+    DEFAULT_LOG_DIR,
+    INVOICED,
+    PAID,
+    UNPAID,
+)
+
+
+class StatusDialog(simpledialog.Dialog):
+    """Popup offering predefined status choices."""
+
+    def body(self, master: tk.Frame) -> None:
+        self.result = None
+        for st in (PAID, INVOICED, UNPAID):
+            tk.Button(
+                master,
+                text=st,
+                width=15,
+                command=lambda s=st: self._set(s),
+            ).pack(padx=5, pady=2, fill=tk.X)
+
+    def buttonbox(self) -> None:  # remove default buttons
+        pass
+
+    def _set(self, value: str) -> None:
+        self.result = value
+        self.destroy()
+
+
+class DateEntryDialog(simpledialog.Dialog):
+    """Dialog with a smart date entry field."""
+
+    def __init__(self, master: tk.Misc, title: str, initial: str,
+                 existing: List[str]):
+        self.initial = initial
+        self.existing = existing
+        super().__init__(master, title)
+
+    def body(self, master: tk.Frame) -> tk.Widget:
+        self.var = tk.StringVar(value=self.initial)
+        entry = tk.Entry(master, textvariable=self.var)
+        entry.pack(padx=5, pady=5)
+        entry.bind("<FocusIn>", self._clear_default)
+        entry.bind("<KeyRelease>", self._format_date)
+        return entry
+
+    def _clear_default(self, _event: tk.Event) -> None:
+        if self.var.get() == self.initial:
+            self.var.set("")
+
+    def _format_date(self, _event: tk.Event) -> None:
+        digits = "".join(ch for ch in self.var.get() if ch.isdigit())[:8]
+        parts = []
+        if len(digits) >= 4:
+            parts.append(digits[:4])
+        if len(digits) >= 6:
+            parts.append(digits[4:6])
+        elif len(digits) > 4:
+            parts.append(digits[4:])
+        if len(digits) >= 8:
+            parts.append(digits[6:8])
+        self.var.set(".".join(parts))
+
+    def validate(self) -> bool:
+        value = self.var.get()
+        if value in self.existing:
+            messagebox.showerror("Error", "Date already exists")
+            return False
+        if not DATE_PATTERN.match(value):
+            messagebox.showerror("Error", "Format YYYY.MM.DD")
+            return False
+        try:
+            datetime.strptime(value, "%Y.%m.%d")
+        except ValueError:
+            messagebox.showerror("Error", "Invalid date")
+            return False
+        return True
+
+    def apply(self) -> None:
+        self.result = self.var.get()
+
+
+class DateEditDialog(simpledialog.Dialog):
+    """Dialog to edit a date line and all its notes."""
+
+    def __init__(self, master: tk.Misc, tc: TimeCounter, index: int):
+        self.tc = tc
+        self.index = index
+        end = index
+        for i in range(index + 1, len(tc.lines)):
+            line = tc.lines[i]
+            if DATE_PATTERN.match(line) or PAID in line or INVOICED in line:
+                break
+            end = i
+        self.lines = tc.lines[index + 1 : end + 1]
+        self.initial_date = tc.lines[index]
+        self.existing = [
+            l
+            for j, l in enumerate(tc.lines)
+            if DATE_PATTERN.match(l) and j != index
+        ]
+        super().__init__(master, "Edit date")
+
+    def body(self, master: tk.Frame) -> tk.Widget:
+        self.date_var = tk.StringVar(value=self.initial_date)
+        self.date_entry = tk.Entry(master, textvariable=self.date_var)
+        self.date_entry.grid(
+            row=0, column=0, columnspan=2, sticky="ew", padx=5, pady=5
+        )
+        self.date_entry.bind("<KeyRelease>", self._format_date)
+        self.rows: List[tuple] = []
+        for i, line in enumerate(self.lines):
+            t_var = tk.StringVar()
+            n_var = tk.StringVar()
+            m = TIME_PATTERN.match(line or "")
+            t_val = m.group() if m else ""
+            note = line[m.end():].lstrip() if m else line
+            t_var.set(t_val)
+            n_var.set(note)
+            te = tk.Entry(master, textvariable=t_var, width=5)
+            ne = tk.Entry(master, textvariable=n_var)
+            te.grid(row=i + 1, column=0, padx=2, pady=2, sticky="w")
+            ne.grid(row=i + 1, column=1, padx=2, pady=2, sticky="ew")
+            self.rows.append((t_var, n_var, te, ne))
+        master.columnconfigure(1, weight=1)
+        self._setup_navigation()
+        return self.date_entry
+
+    def _setup_navigation(self) -> None:
+        count = len(self.rows)
+        for i, (_, _, te, ne) in enumerate(self.rows):
+            te.bind("<KeyRelease>", lambda e, v=self.rows[i][0]: self._auto_colon(v))
+            if i > 0:
+                te.bind("<Up>", lambda e, r=i - 1: self.rows[r][2].focus_set())
+                ne.bind("<Up>", lambda e, r=i - 1: self.rows[r][3].focus_set())
+            if i < count - 1:
+                te.bind("<Down>", lambda e, r=i + 1: self.rows[r][2].focus_set())
+                ne.bind("<Down>", lambda e, r=i + 1: self.rows[r][3].focus_set())
+            te.bind("<Right>", lambda e, r=i: self.rows[r][3].focus_set())
+            ne.bind("<Left>", lambda e, r=i: self.rows[r][2].focus_set())
+            for w in (te, ne):
+                w.bind("<Return>", lambda e: self.ok())
+
+    def _auto_colon(self, var: tk.StringVar) -> None:
+        val = var.get()
+        if len(val) == 2 and ":" not in val:
+            var.set(val + ":")
+
+    def _format_date(self, _event: tk.Event) -> None:
+        digits = "".join(ch for ch in self.date_var.get() if ch.isdigit())[:8]
+        parts = []
+        if len(digits) >= 4:
+            parts.append(digits[:4])
+        if len(digits) >= 6:
+            parts.append(digits[4:6])
+        elif len(digits) > 4:
+            parts.append(digits[4:])
+        if len(digits) >= 8:
+            parts.append(digits[6:8])
+        self.date_var.set(".".join(parts))
+
+    def validate(self) -> bool:
+        date = self.date_var.get()
+        if date in self.existing:
+            messagebox.showerror("Error", "Date already exists")
+            return False
+        if not DATE_PATTERN.match(date):
+            messagebox.showerror("Error", "Format YYYY.MM.DD")
+            return False
+        try:
+            datetime.strptime(date, "%Y.%m.%d")
+        except ValueError:
+            messagebox.showerror("Error", "Invalid date")
+            return False
+        for t_var, _, _, _ in self.rows:
+            t_val = t_var.get()
+            if t_val and not TIME_PATTERN.match(t_val):
+                messagebox.showerror("Error", f"Invalid time: {t_val}")
+                return False
+        return True
+
+    def apply(self) -> None:
+        self.result = {
+            "date": self.date_var.get(),
+            "lines": [
+                f"{t.get()} {n.get()}".rstrip() for t, n, _, _ in self.rows
+            ],
+        }
+
 
 
 class App(tk.Tk):
@@ -186,24 +376,31 @@ class App(tk.Tk):
 
     def add_date(self, item: str) -> None:
         index = int(self.tree.set(item, "idx"))
-        date = simpledialog.askstring("Date", "YYYY.MM.DD")
-        if date and DATE_PATTERN.match(date):
-            self.tc.insert_date_after(index, date)
+        existing = [l for l in self.tc.lines if DATE_PATTERN.match(l)]
+        dlg = DateEntryDialog(
+            self,
+            "Date",
+            datetime.now().strftime("%Y.%m.%d"),
+            existing,
+        )
+        if dlg.result:
+            self.tc.insert_date_after(index, dlg.result)
             self.refresh_list()
 
     def edit_date(self, item: str) -> None:
         index = int(self.tree.set(item, "idx"))
-        current = self.tree.item(item, "text").split()[0]
-        new = simpledialog.askstring("Edit date", "YYYY.MM.DD", initialvalue=current)
-        if new and DATE_PATTERN.match(new):
-            self.tc.update_line(index, new)
+        dlg = DateEditDialog(self, self.tc, index)
+        if dlg.result:
+            self.tc.update_line(index, dlg.result["date"])
+            for off, line in enumerate(dlg.result["lines"]):
+                self.tc.update_line(index + 1 + off, line)
             self.refresh_list()
 
     def change_status(self, item: str) -> None:
         index = int(self.tree.set(item, "idx"))
-        status = simpledialog.askstring("Status", f"{PAID}/{INVOICED}")
-        if status:
-            self.tc.change_status(index, status)
+        dlg = StatusDialog(self, "Status")
+        if dlg.result:
+            self.tc.change_status(index, dlg.result)
             self.refresh_list()
 
     def add_period(self) -> None:
