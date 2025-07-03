@@ -21,18 +21,19 @@ class App(tk.Tk):
         tk.Button(file_frame, text="Select Log File", command=self.select_file).pack(side=tk.LEFT, padx=5)
         tk.Button(file_frame, text="Create New Log", command=self.create_new_log).pack(side=tk.LEFT, padx=5)
 
-        self.tree = ttk.Treeview(self, columns=("idx",))
+        self.tree = ttk.Treeview(self, columns=("idx", "menu"))
         self.tree.column("idx", width=0, stretch=False)
+        self.tree.column("menu", width=20, anchor="e", stretch=False)
         self.tree.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
         self.tree.bind("<Double-1>", self.on_double_click)
-        self.tree.bind("<Motion>", self.on_tree_motion)
-        self.tree.bind("<Leave>", lambda e: self._hide_action())
+        self.tree.bind("<Button-1>", self.on_tree_click)
 
-        self.action_frame = tk.Frame(self.tree, bg="#eeeeee", relief=tk.RAISED, borderwidth=1)
-        self.hover_item: Optional[str] = None
+        self.context_menu = tk.Menu(self, tearoff=0)
         self.edit_frame: Optional[tk.Frame] = None
         self.edit_item: Optional[str] = None
         self.edit_index: Optional[int] = None
+        self.edit_time_var: Optional[tk.StringVar] = None
+        self.edit_text_var: Optional[tk.StringVar] = None
 
     # ----------------------------------------------------- file operations
     def select_file(self) -> None:
@@ -63,50 +64,39 @@ class App(tk.Tk):
         for p in periods:
             pidx = self._status_index(p)
             text = f"{p.get('start','')} - {p.get('end','')} {p.get('total_hours',0)} ч. {p.get('status','')}".strip()
-            pid = self.tree.insert("", tk.END, text=text, tags=("period",), values=(pidx,))
+            pid = self.tree.insert("", tk.END, text=text, tags=("period",), values=(pidx, "⋮"))
             for d in p.get("dates", []):
                 hours = d.get("hours", 0)
                 hours_str = ("%.1f" % hours).rstrip("0").rstrip(".")
-                did = self.tree.insert(pid, tk.END, text=f"{d['date']} {hours_str} ч.", tags=("date",), values=(d["start_idx"],))
+                did = self.tree.insert(pid, tk.END, text=f"{d['date']} {hours_str} ч.", tags=("date",), values=(d["start_idx"], "⋮"))
                 for line_idx in range(d["start_idx"] + 1, d["end_idx"] + 1):
                     line = self.tc.lines[line_idx]
                     display = line if line else "------------"
-                    self.tree.insert(did, tk.END, text=display, tags=("note",), values=(line_idx,))
+                    self.tree.insert(did, tk.END, text=display, tags=("note",), values=(line_idx, "⋮"))
 
-    # ----------------------------------------------------- hover buttons
-    def on_tree_motion(self, event: tk.Event) -> None:
+    # ----------------------------------------------------- context menu
+    def on_tree_click(self, event: tk.Event) -> None:
         item = self.tree.identify_row(event.y)
-        if item != self.hover_item:
-            self.hover_item = item
-            self._show_action(item)
+        col = self.tree.identify_column(event.x)
+        if col == "#2" and item:
+            self.show_menu(item, event.x_root, event.y_root)
+            return "break"
 
-    def _show_action(self, item: Optional[str]) -> None:
-        self.action_frame.place_forget()
-        for child in self.action_frame.winfo_children():
-            child.destroy()
-        if not item:
-            return
-        bbox = self.tree.bbox(item)
-        if not bbox:
-            return
-        x, y, width, height = bbox
+    def show_menu(self, item: str, x: int, y: int) -> None:
+        self.context_menu.delete(0, tk.END)
         tags = self.tree.item(item, "tags")
         if "period" in tags:
-            tk.Button(self.action_frame, text="Статус", command=lambda i=item: self.change_status(i)).pack(side=tk.LEFT)
-            tk.Button(self.action_frame, text="+Период", command=self.add_period).pack(side=tk.LEFT)
+            self.context_menu.add_command(label="Статус", command=lambda i=item: self.change_status(i))
+            self.context_menu.add_command(label="+Период", command=self.add_period)
         elif "date" in tags:
-            tk.Button(self.action_frame, text="Ред.", command=lambda i=item: self.edit_date(i)).pack(side=tk.LEFT)
-            tk.Button(self.action_frame, text="+Дата", command=lambda i=item: self.add_date(i)).pack(side=tk.LEFT)
+            self.context_menu.add_command(label="Ред.", command=lambda i=item: self.edit_date(i))
+            self.context_menu.add_command(label="+Дата", command=lambda i=item: self.add_date(i))
         elif "note" in tags:
-            tk.Button(self.action_frame, text="Ред.", command=lambda i=item: self.start_edit_note(i)).pack(side=tk.LEFT)
-            tk.Button(self.action_frame, text="+", command=lambda i=item: self.add_note_after(i)).pack(side=tk.LEFT)
+            self.context_menu.add_command(label="Ред.", command=lambda i=item: self.start_edit_note(i))
+            self.context_menu.add_command(label="+", command=lambda i=item: self.add_note_after(i))
         else:
             return
-        self.action_frame.place(x=x, y=y + height)
-
-    def _hide_action(self) -> None:
-        self.action_frame.place_forget()
-        self.hover_item = None
+        self.context_menu.tk_popup(x, y)
 
     # ----------------------------------------------------- editing helpers
     def _validate_time(self, value: str) -> bool:
