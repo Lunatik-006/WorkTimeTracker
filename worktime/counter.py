@@ -328,3 +328,33 @@ class TimeCounter:
             line = f"{line} {status}"
         self.lines[index] = line
         self.save()
+
+    def delete_lines(self, start: int, end: int) -> None:
+        """Delete lines from *start* to *end* inclusive and save."""
+        if start < 0:
+            start = 0
+        if end >= len(self.lines):
+            end = len(self.lines) - 1
+        if start > end:
+            return
+        del self.lines[start : end + 1]
+        self.save()
+
+    def add_custom_period(self, start_date: str, end_date: str) -> None:
+        """Insert an invoice line for the specified date range."""
+        dates = [l for l in self.lines if DATE_PATTERN.match(l)]
+        if start_date not in dates or end_date not in dates:
+            return
+        start_idx = dates.index(start_date)
+        end_idx = dates.index(end_date)
+        if start_idx > end_idx:
+            return
+        totals = self.date_totals()
+        selected = dates[start_idx : end_idx + 1]
+        total_minutes = sum(totals.get(d, 0) for d in selected)
+        hours = round(total_minutes / 30) / 2
+        date_map = {d["date"]: d for p in self.parse_periods() for d in p["dates"]}
+        insert_idx = date_map[end_date]["end_idx"] + 1 if end_date in date_map else len(self.lines)
+        line = f"{start_date}-{end_date} {hours} часов {INVOICED}"
+        self.lines.insert(insert_idx, line)
+        self.save()

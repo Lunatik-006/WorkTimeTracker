@@ -22,3 +22,13 @@ def test_no_separators_outside_work_blocks():
     # dash should appear only between first two intervals of the first day
     assert lines[1] == '------------'
     assert lines[3] != '------------'  # no dash after the last interval of the day
+
+
+def test_no_empty_notes_at_edges():
+    tc = TimeCounter(LOG_PATH)
+    periods = tc.parse_periods()
+    for p in periods:
+        for d in p.get('dates', []):
+            if d['notes']:
+                assert d['notes'][0] != ''
+                assert d['notes'][-1] != ''
