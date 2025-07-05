@@ -14,6 +14,16 @@ from .constants import (
 )
 
 
+def _format_partial_date(digits: str) -> str:
+    """Return a partially formatted date from up to 8 digit characters."""
+    digits = digits[:8]
+    if len(digits) <= 4:
+        return digits
+    if len(digits) <= 6:
+        return f"{digits[:4]}.{digits[4:]}"
+    return f"{digits[:4]}.{digits[4:6]}.{digits[6:]}"
+
+
 class StatusDialog(simpledialog.Dialog):
     """Popup offering predefined status choices."""
 
@@ -57,17 +67,8 @@ class DateEntryDialog(simpledialog.Dialog):
             self.var.set("")
 
     def _format_date(self, _event: tk.Event) -> None:
-        digits = "".join(ch for ch in self.var.get() if ch.isdigit())[:8]
-        parts = []
-        if len(digits) >= 4:
-            parts.append(digits[:4])
-        if len(digits) >= 6:
-            parts.append(digits[4:6])
-        elif len(digits) > 4:
-            parts.append(digits[4:])
-        if len(digits) >= 8:
-            parts.append(digits[6:8])
-        self.var.set(".".join(parts))
+        digits = "".join(ch for ch in self.var.get() if ch.isdigit())
+        self.var.set(_format_partial_date(digits))
 
     def validate(self) -> bool:
         value = self.var.get()
@@ -112,19 +113,9 @@ class PeriodDialog(simpledialog.Dialog):
         var = event.widget
         if var not in (self.start_entry, self.end_entry):
             return
-        v = var.get()
-        digits = "".join(ch for ch in v if ch.isdigit())[:8]
-        parts = []
-        if len(digits) >= 4:
-            parts.append(digits[:4])
-        if len(digits) >= 6:
-            parts.append(digits[4:6])
-        elif len(digits) > 4:
-            parts.append(digits[4:])
-        if len(digits) >= 8:
-            parts.append(digits[6:8])
+        digits = "".join(ch for ch in var.get() if ch.isdigit())
         var.delete(0, tk.END)
-        var.insert(0, ".".join(parts))
+        var.insert(0, _format_partial_date(digits))
 
     def validate(self) -> bool:
         start = self.start_var.get()
@@ -217,17 +208,8 @@ class DateEditDialog(simpledialog.Dialog):
             var.set(val + ":")
 
     def _format_date(self, _event: tk.Event) -> None:
-        digits = "".join(ch for ch in self.date_var.get() if ch.isdigit())[:8]
-        parts = []
-        if len(digits) >= 4:
-            parts.append(digits[:4])
-        if len(digits) >= 6:
-            parts.append(digits[4:6])
-        elif len(digits) > 4:
-            parts.append(digits[4:])
-        if len(digits) >= 8:
-            parts.append(digits[6:8])
-        self.date_var.set(".".join(parts))
+        digits = "".join(ch for ch in self.date_var.get() if ch.isdigit())
+        self.date_var.set(_format_partial_date(digits))
 
     def validate(self) -> bool:
         date = self.date_var.get()
