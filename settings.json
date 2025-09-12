@@ -1,6 +1,6 @@
 {
-  "app_lang": "en",
+  "app_lang": "ru",
   "tts_lang": "en",
   "voice": null,
-  "sound": "beep"
+  "sound": "tts"
 }
