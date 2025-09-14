@@ -228,10 +228,20 @@ class TimeCounter:
         return periods
 
     def compute_totals(self) -> str:
+        """Return human-readable totals for the current log.
+
+        - First line: total hours since last PAID (if any)
+        - Second line: hours already INVOICED since last PAID (if any)
+        - Third line: hours after the last INVOICED marker
+        """
         paid_indexes = [i for i, line in enumerate(self.lines) if PAID in line]
         last_paid_index = paid_indexes[-1] if paid_indexes else -1
+
+        # totals after last PAID
         post_paid = self.lines[last_paid_index + 1 :]
         total_minutes, start_date, end_date = self.compute_interval(post_paid)
+
+        # totals for the invoiced part after last PAID
         next_invoice_index = None
         for idx in range(last_paid_index + 1, len(self.lines)):
             if INVOICED in self.lines[idx]:
@@ -242,21 +252,21 @@ class TimeCounter:
         if next_invoice_index is not None:
             invoiced_lines = self.lines[last_paid_index + 1 : next_invoice_index]
             invoiced_minutes, _, invoiced_end_date = self.compute_interval(invoiced_lines)
+
+        # totals after the most recent INVOICED (or after PAID if none)
         unissued_start = next_invoice_index if next_invoice_index is not None else last_paid_index
         unissued_lines = self.lines[unissued_start + 1 :]
         unissued_minutes, unissued_start_date, unissued_end_date = self.compute_interval(unissued_lines)
+
         res = []
         if total_minutes:
-            res.append(f"{round(total_minutes / 30) / 2} часов (с {start_date} по {end_date})")
+            res.append(f"{round(total_minutes / 30) / 2} hours (from {start_date} to {end_date})")
         if invoiced_minutes is not None:
-            res.append(
-                f"{round(invoiced_minutes / 30) / 2} часов до {INVOICED} (с {start_date} по {invoiced_end_date})"
-            )
+            res.append(f"{round(invoiced_minutes / 30) / 2} hours for {INVOICED} (from {start_date} to {invoiced_end_date})")
         if unissued_minutes:
-            res.append(
-                f"{round(unissued_minutes / 30) / 2} часов без {INVOICED} (с {unissued_start_date} по {unissued_end_date})"
-            )
-        return "\n".join(res)
+            res.append(f"{round(unissued_minutes / 30) / 2} hours after {INVOICED} (from {unissued_start_date} to {unissued_end_date})")
+        return "
+".join(res)
 
     def mark_invoice_as_paid(self) -> bool:
         paid_indexes = [i for i, line in enumerate(self.lines) if PAID in line]
@@ -290,7 +300,7 @@ class TimeCounter:
         self.save()
 
     def add_invoice_for_period(self, period: dict) -> None:
-        line = f"{period['start']}-{period['end']} {period['total_hours']} часов {INVOICED}"
+        line = f"{period['start']}-{period['end']} {period['total_hours']} hours {INVOICED}"
         insert_pos = period.get('end_idx', len(self.lines) - 1) + 1
         self.lines.insert(insert_pos, line)
         self.save()
@@ -355,6 +365,6 @@ class TimeCounter:
         hours = round(total_minutes / 30) / 2
         date_map = {d["date"]: d for p in self.parse_periods() for d in p["dates"]}
         insert_idx = date_map[end_date]["end_idx"] + 1 if end_date in date_map else len(self.lines)
-        line = f"{start_date}-{end_date} {hours} часов {INVOICED}"
+        line = f"{start_date}-{end_date} {hours} hours {INVOICED}"
         self.lines.insert(insert_idx, line)
         self.save()

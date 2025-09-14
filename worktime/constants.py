@@ -1,9 +1,8 @@
-PAID = "ОПЛАЧЕНО"
-INVOICED = "СЧЕТ ВЫСТАВЛЕН"
-UNPAID = "ДЕНЕГ НЕТ"
+﻿PAID = "PAID"
+INVOICED = "INVOICED"
+UNPAID = "UNPAID"
 
 import os
-
 import re
 
 BASE_DIR = os.path.dirname(os.path.dirname(__file__))
