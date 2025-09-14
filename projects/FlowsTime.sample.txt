@@ -1,0 +1,24 @@
+# Example anonymized time log
+# Copy this file to FlowsTime.txt and edit.
+
+2025.01.05
+
+09:00 Project A — research OAuth flow
+12:30 Break
+13:15 Project A — implement auth handler
+18:00
+
+2025.01.06
+
+10:00 Project B — set up CI
+13:00 Lunch
+14:00 Code review and fixes
+17:30
+
+2025.01.10
+
+09:30 Internal tools — bug triage
+12:00 Break
+13:00 Internal tools — implement fixes
+16:45
+

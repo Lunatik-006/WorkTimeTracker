@@ -2,3 +2,7 @@
 /__pycache__
 /.venv
 /venv
+
+# Ignore personal time logs
+/FlowsTime.txt
+/projects/FlowsTime.txt
